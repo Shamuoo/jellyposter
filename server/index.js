@@ -81,7 +81,7 @@ async function getNowPlaying() {
 
     let fullItem = item;
     try {
-      fullItem = await jellyfinGet(`/Items/${item.Id}?fields=Overview,Taglines,Genres,OfficialRating,CommunityRating`);
+      fullItem = await jellyfinGet(`/Items/${item.Id}?fields=Overview,Taglines,Genres,OfficialRating,CommunityRating,People,MediaStreams`);
     } catch (e) {
       console.warn('[warn] Could not fetch full item:', e.message);
     }
@@ -105,7 +105,7 @@ async function getNowPlaying() {
   }
 }
 
-const PUBLIC_DIR = path.join(__dirname, 'public');
+const PUBLIC_DIR = path.resolve('/app/public');
 
 const server = http.createServer(async (req, res) => {
   const pathname = url.parse(req.url).pathname;
