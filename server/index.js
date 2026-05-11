@@ -105,7 +105,7 @@ async function getNowPlaying() {
   }
 }
 
-const PUBLIC_DIR = path.join(__dirname, 'public');
+const PUBLIC_DIR = path.resolve('/app/public');
 
 const server = http.createServer(async (req, res) => {
   const pathname = url.parse(req.url).pathname;
