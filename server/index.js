@@ -56,6 +56,63 @@ function jellyfinGet(endpoint) {
 function posterUrl(itemId) { return `${JELLYFIN_URL}/Items/${itemId}/Images/Primary?maxWidth=600&api_key=${JELLYFIN_API_KEY}`; }
 function backdropUrl(itemId) { return `${JELLYFIN_URL}/Items/${itemId}/Images/Backdrop/0?maxWidth=1920&api_key=${JELLYFIN_API_KEY}`; }
 
+// ── Quality label from media streams ──
+function qualityFromStreams(streams) {
+  if (!streams) return null;
+  const video = streams.find(s => s.Type === 'Video');
+  if (!video) return null;
+  const h = video.Height || 0;
+  const is3D = streams.some(s => s.Type === 'Video' && (s.Video3DFormat || (video.DisplayTitle && video.DisplayTitle.toLowerCase().includes('3d'))));
+  if (is3D) return '3D';
+  if (h >= 2160) return '4K';
+  if (h >= 1080) return '1080p';
+  if (h >= 720) return '720p';
+  if (h >= 480) return '480p';
+  return null;
+}
+
+// ── Deduplicate movies by name+year, merging quality tags ──
+function deduplicateMovies(items) {
+  const map = new Map();
+  items.forEach(item => {
+    const key = `${item.title}__${item.year}`;
+    if (map.has(key)) {
+      const existing = map.get(key);
+      // Merge quality tags
+      const allQualities = [...new Set([...(existing.qualities || []), ...(item.qualities || [])])];
+      existing.qualities = allQualities;
+      // Keep best quality item as primary
+      const qOrder = ['4K', '1080p', '720p', '3D', '480p'];
+      const existingBest = qOrder.indexOf(existing.qualities[0]);
+      const newBest = qOrder.indexOf(item.qualities[0]);
+      if (newBest < existingBest) {
+        existing.id = item.id;
+        existing.posterUrl = item.posterUrl;
+        existing.backdropUrl = item.backdropUrl;
+      }
+      existing.versionCount = (existing.versionCount || 1) + 1;
+    } else {
+      map.set(key, { ...item, versionCount: 1 });
+    }
+  });
+  return Array.from(map.values());
+}
+
+// ── Map Jellyfin item to standard shape with quality ──
+function mapItem(i) {
+  const quality = qualityFromStreams(i.MediaStreams);
+  return {
+    id: i.Id, title: i.Name, year: i.ProductionYear,
+    genre: (i.Genres || []).slice(0, 2).join(' / '),
+    rating: i.OfficialRating, score: i.CommunityRating,
+    overview: i.Overview,
+    qualities: quality ? [quality] : [],
+    cast: (i.People || []).filter(p => p.Type === 'Actor').slice(0, 5).map(p => p.Name),
+    director: (i.People || []).find(p => p.Type === 'Director') ? (i.People || []).find(p => p.Type === 'Director').Name : null,
+    posterUrl: posterUrl(i.Id), backdropUrl: backdropUrl(i.Id),
+  };
+}
+
 // ── Admin user ──
 let adminUserId = null;
 async function getAdminUserId() {
@@ -130,6 +187,7 @@ async function getNowPlaying() {
     full.posterUrl = posterUrl(item.Id);
     full.backdropUrl = backdropUrl(item.Id);
     full.RunTimeTicks = full.RunTimeTicks || item.RunTimeTicks;
+    const quality = qualityFromStreams(full.MediaStreams);
     nowPlayingCache = {
       item: full,
       positionTicks: ps.PositionTicks || 0,
@@ -138,7 +196,7 @@ async function getNowPlaying() {
       sessionUser: playing.UserName || '',
       allUsers: active.map(s => ({ user: s.UserName, title: s.NowPlayingItem.Name, isPaused: s.PlayState.IsPaused })),
       director: director ? director.Name : null,
-      trailerKey, nextUp,
+      quality, trailerKey, nextUp,
     };
     return nowPlayingCache;
   } catch (e) { console.error('[error] getNowPlaying:', e.message); return nowPlayingCache; }
@@ -151,27 +209,20 @@ let newArrivals = [];
 const getRecentlyAdded = cached('recent', 60 * 1000, async () => {
   const userId = await getAdminUserId();
   if (!userId) throw new Error('No admin user ID');
-  const data = await jellyfinGet(`/Users/${userId}/Items/Latest?MediaType=Video&IncludeItemTypes=Movie&Limit=12&fields=Overview,Genres,ProductionYear,OfficialRating,CommunityRating,People`);
-  const items = (data || []).map(i => ({
-    id: i.Id, title: i.Name, year: i.ProductionYear,
-    genre: (i.Genres || []).slice(0, 2).join(' / '),
-    rating: i.OfficialRating, score: i.CommunityRating,
-    overview: i.Overview,
-    cast: (i.People || []).filter(p => p.Type === 'Actor').slice(0, 5).map(p => p.Name),
-    director: (i.People || []).find(p => p.Type === 'Director') ? (i.People || []).find(p => p.Type === 'Director').Name : null,
-    posterUrl: posterUrl(i.Id), backdropUrl: backdropUrl(i.Id),
-  }));
+  const data = await jellyfinGet(`/Users/${userId}/Items/Latest?MediaType=Video&IncludeItemTypes=Movie&Limit=24&fields=Overview,Genres,ProductionYear,OfficialRating,CommunityRating,People,MediaStreams`);
+  const items = (data || []).map(mapItem);
+  const deduped = deduplicateMovies(items).slice(0, 12);
   if (lastRecentIds.size > 0) {
-    items.forEach(item => {
+    deduped.forEach(item => {
       if (!lastRecentIds.has(item.id)) {
         newArrivals.push({ ...item, arrivedAt: Date.now() });
         console.log(`[info] New arrival: ${item.title}`);
       }
     });
   }
-  lastRecentIds = new Set(items.map(i => i.id));
+  lastRecentIds = new Set(deduped.map(i => i.id));
   newArrivals = newArrivals.filter(a => Date.now() - a.arrivedAt < 10 * 60 * 1000);
-  return items;
+  return deduped;
 });
 
 const getComingSoon = cached('coming', 60 * 60 * 1000, async () => {
@@ -180,6 +231,7 @@ const getComingSoon = cached('coming', 60 * 60 * 1000, async () => {
   return (data.results || []).slice(0, 12).map(m => ({
     id: m.id, title: m.title, year: m.release_date ? m.release_date.split('-')[0] : null,
     releaseDate: m.release_date, overview: m.overview, score: m.vote_average,
+    qualities: [],
     posterUrl: m.poster_path ? `https://image.tmdb.org/t/p/w500${m.poster_path}` : null,
     backdropUrl: m.backdrop_path ? `https://image.tmdb.org/t/p/w1280${m.backdrop_path}` : null,
   }));
@@ -188,43 +240,29 @@ const getComingSoon = cached('coming', 60 * 60 * 1000, async () => {
 const getContinueWatching = cached('continue', 2 * 60 * 1000, async () => {
   const userId = await getAdminUserId();
   if (!userId) return [];
-  const data = await jellyfinGet(`/Users/${userId}/Items/Resume?MediaType=Video&Limit=8&fields=Overview,Genres,ProductionYear,OfficialRating,UserData`);
-  return (data.Items || []).map(i => ({
-    id: i.Id, title: i.Name, year: i.ProductionYear, type: i.Type,
-    seriesName: i.SeriesName, genre: (i.Genres || []).slice(0, 1).join(''),
-    overview: i.Overview, rating: i.OfficialRating,
-    posterUrl: posterUrl(i.Id), backdropUrl: backdropUrl(i.Id),
+  const data = await jellyfinGet(`/Users/${userId}/Items/Resume?MediaType=Video&Limit=16&fields=Overview,Genres,ProductionYear,OfficialRating,UserData,MediaStreams`);
+  const items = (data.Items || []).map(i => ({
+    ...mapItem(i),
+    type: i.Type, seriesName: i.SeriesName,
     progress: i.UserData ? Math.round(i.UserData.PlayedPercentage || 0) : 0,
   }));
+  return deduplicateMovies(items).slice(0, 8);
 });
 
 const getPopular = cached('popular', 30 * 60 * 1000, async () => {
-  // Only show movies that have actually been played (PlayCount > 0)
-  const data = await jellyfinGet(`/Items?IncludeItemTypes=Movie&SortBy=PlayCount&SortOrder=Descending&Limit=24&fields=Overview,Genres,ProductionYear,OfficialRating,CommunityRating,People,UserData&Recursive=true&Filters=IsPlayed`);
-  return (data.Items || []).filter(i => i.UserData && i.UserData.PlayCount > 0).slice(0, 12).map(i => ({
-    id: i.Id, title: i.Name, year: i.ProductionYear,
-    genre: (i.Genres || []).slice(0, 2).join(' / '),
-    score: i.CommunityRating, overview: i.Overview, rating: i.OfficialRating,
-    cast: (i.People || []).filter(p => p.Type === 'Actor').slice(0, 5).map(p => p.Name),
-    director: (i.People || []).find(p => p.Type === 'Director') ? (i.People || []).find(p => p.Type === 'Director').Name : null,
-    posterUrl: posterUrl(i.Id), backdropUrl: backdropUrl(i.Id),
-  }));
+  const data = await jellyfinGet(`/Items?IncludeItemTypes=Movie&SortBy=PlayCount&SortOrder=Descending&Limit=24&fields=Overview,Genres,ProductionYear,OfficialRating,CommunityRating,People,MediaStreams,UserData&Recursive=true&Filters=IsPlayed`);
+  const items = (data.Items || []).filter(i => i.UserData && i.UserData.PlayCount > 0).map(mapItem);
+  return deduplicateMovies(items).slice(0, 12);
 });
 
 const getWatchHistory = cached('history', 5 * 60 * 1000, async () => {
   const userId = await getAdminUserId();
   if (!userId) return [];
-  const data = await jellyfinGet(`/Users/${userId}/Items?SortBy=DatePlayed&SortOrder=Descending&Filters=IsPlayed&IncludeItemTypes=Movie&Recursive=true&Limit=12&fields=Overview,Genres,ProductionYear,OfficialRating,CommunityRating,UserData`);
-  return (data.Items || []).map(i => ({
-    id: i.Id, title: i.Name, year: i.ProductionYear,
-    genre: (i.Genres || []).slice(0, 2).join(' / '),
-    score: i.CommunityRating, overview: i.Overview, rating: i.OfficialRating,
-    playedDate: i.UserData ? i.UserData.LastPlayedDate : null,
-    posterUrl: posterUrl(i.Id), backdropUrl: backdropUrl(i.Id),
-  }));
+  const data = await jellyfinGet(`/Users/${userId}/Items?SortBy=DatePlayed&SortOrder=Descending&Filters=IsPlayed&IncludeItemTypes=Movie&Recursive=true&Limit=24&fields=Overview,Genres,ProductionYear,OfficialRating,CommunityRating,UserData,MediaStreams`);
+  const items = (data.Items || []).map(i => ({ ...mapItem(i), playedDate: i.UserData ? i.UserData.LastPlayedDate : null }));
+  return deduplicateMovies(items).slice(0, 12);
 });
 
-// ── On This Day — only popular movies (vote_count > 100) ──
 const getOnThisDay = cached('onthisday', 60 * 60 * 1000, async () => {
   if (!TMDB_API_KEY) return [];
   const now = new Date();
@@ -240,7 +278,7 @@ const getOnThisDay = cached('onthisday', 60 * 60 * 1000, async () => {
           results.push(...data.results.slice(0, 2).map(m => ({
             id: m.id, title: m.title,
             year: m.release_date ? m.release_date.split('-')[0] : null,
-            overview: m.overview, score: m.vote_average,
+            overview: m.overview, score: m.vote_average, qualities: [],
             posterUrl: m.poster_path ? `https://image.tmdb.org/t/p/w500${m.poster_path}` : null,
             backdropUrl: m.backdrop_path ? `https://image.tmdb.org/t/p/w1280${m.backdrop_path}` : null,
           })));
@@ -261,59 +299,38 @@ const getStats = cached('stats', 10 * 60 * 1000, async () => {
 });
 
 async function getRandomMovie() {
-  const data = await jellyfinGet(`/Items?IncludeItemTypes=Movie&Recursive=true&SortBy=Random&Limit=1&fields=Overview,Genres,ProductionYear,OfficialRating,CommunityRating,People,Taglines`);
+  const data = await jellyfinGet(`/Items?IncludeItemTypes=Movie&Recursive=true&SortBy=Random&Limit=1&fields=Overview,Genres,ProductionYear,OfficialRating,CommunityRating,People,Taglines,MediaStreams`);
   const item = (data.Items || [])[0];
   if (!item) return null;
-  return {
-    id: item.Id, title: item.Name, year: item.ProductionYear,
-    genre: (item.Genres || []).slice(0, 2).join(' / '),
-    score: item.CommunityRating, overview: item.Overview,
-    tagline: item.Taglines ? item.Taglines[0] : '',
-    rating: item.OfficialRating,
-    director: (item.People || []).find(p => p.Type === 'Director') ? (item.People || []).find(p => p.Type === 'Director').Name : null,
-    cast: (item.People || []).filter(p => p.Type === 'Actor').slice(0, 5).map(p => p.Name),
-    posterUrl: posterUrl(item.Id), backdropUrl: backdropUrl(item.Id),
-  };
+  const mapped = mapItem(item);
+  return { ...mapped, tagline: item.Taglines ? item.Taglines[0] : '' };
 }
 
-// ── Search — client-side filter on title match ──
 async function searchLibrary(query) {
   if (!query || query.length < 2) return [];
-  const data = await jellyfinGet(`/Items?SearchTerm=${encodeURIComponent(query)}&IncludeItemTypes=Movie,Series&Recursive=true&Limit=24&SortBy=SortName&fields=Overview,Genres,ProductionYear,OfficialRating,CommunityRating,People`);
+  const data = await jellyfinGet(`/Items?SearchTerm=${encodeURIComponent(query)}&IncludeItemTypes=Movie,Series&Recursive=true&Limit=24&SortBy=SortName&fields=Overview,Genres,ProductionYear,OfficialRating,CommunityRating,People,MediaStreams`);
   const q = query.toLowerCase();
-  return (data.Items || [])
+  const items = (data.Items || [])
     .filter(i => i.Name && i.Name.toLowerCase().includes(q))
-    .slice(0, 12)
-    .map(i => ({
-      id: i.Id, title: i.Name, year: i.ProductionYear, type: i.Type,
-      genre: (i.Genres || []).slice(0, 2).join(' / '),
-      score: i.CommunityRating, overview: i.Overview, rating: i.OfficialRating,
-      cast: (i.People || []).filter(p => p.Type === 'Actor').slice(0, 5).map(p => p.Name),
-      director: (i.People || []).find(p => p.Type === 'Director') ? (i.People || []).find(p => p.Type === 'Director').Name : null,
-      posterUrl: posterUrl(i.Id), backdropUrl: backdropUrl(i.Id),
-    }));
+    .map(i => ({ ...mapItem(i), type: i.Type }));
+  return deduplicateMovies(items).slice(0, 12);
 }
 
-// ── All Movies ──
 async function getAllMovies(sortBy, sortOrder, genre, minYear, maxYear, startIndex) {
-  let endpoint = `/Items?IncludeItemTypes=Movie&Recursive=true&fields=Overview,Genres,ProductionYear,OfficialRating,CommunityRating&Limit=48&StartIndex=${startIndex || 0}`;
+  let endpoint = `/Items?IncludeItemTypes=Movie&Recursive=true&fields=Overview,Genres,ProductionYear,OfficialRating,CommunityRating,MediaStreams&Limit=96&StartIndex=${startIndex || 0}`;
   endpoint += `&SortBy=${sortBy || 'SortName'}&SortOrder=${sortOrder || 'Ascending'}`;
   if (genre) endpoint += `&Genres=${encodeURIComponent(genre)}`;
   if (minYear) endpoint += `&MinPremiereDate=${minYear}-01-01`;
   if (maxYear) endpoint += `&MaxPremiereDate=${maxYear}-12-31`;
   const data = await jellyfinGet(endpoint);
+  const items = (data.Items || []).map(mapItem);
+  const deduped = deduplicateMovies(items);
   return {
     total: data.TotalRecordCount || 0,
-    items: (data.Items || []).map(i => ({
-      id: i.Id, title: i.Name, year: i.ProductionYear,
-      genre: (i.Genres || []).slice(0, 2).join(' / '),
-      score: i.CommunityRating, overview: i.Overview, rating: i.OfficialRating,
-      posterUrl: posterUrl(i.Id), backdropUrl: backdropUrl(i.Id),
-    })),
+    items: deduped.slice(0, 48),
   };
 }
 
-// ── All Genres ──
 async function getAllGenres() {
   const data = await jellyfinGet('/Genres?IncludeItemTypes=Movie&Recursive=true&Limit=100');
   return (data.Items || []).map(g => g.Name).sort();
@@ -333,7 +350,6 @@ async function getWeather(city) {
   } catch (e) { return weatherCaches[city] ? weatherCaches[city].data : null; }
 }
 
-// ── Server ──
 const PUBLIC_DIR = path.resolve('/app/public');
 
 const server = http.createServer(async (req, res) => {
