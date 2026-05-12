@@ -11,7 +11,7 @@ const POLL_INTERVAL_MS = parseInt(process.env.POLL_INTERVAL_MS || '4000', 10);
 const TMDB_API_KEY = process.env.TMDB_API_KEY || '';
 
 if (!JELLYFIN_API_KEY) console.warn('[warn] JELLYFIN_API_KEY not set');
-if (!TMDB_API_KEY) console.warn('[warn] TMDB_API_KEY not set — coming soon + enrichment disabled');
+if (!TMDB_API_KEY) console.warn('[warn] TMDB_API_KEY not set');
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -38,7 +38,7 @@ function httpGet(reqUrl, headers = {}) {
       res.on('data', chunk => body += chunk);
       res.on('end', () => {
         try { resolve(JSON.parse(body)); }
-        catch (e) { reject(new Error(`JSON parse error: ${body.slice(0, 200)}`)); }
+        catch (e) { reject(new Error(`JSON parse: ${body.slice(0,200)}`)); }
       });
     });
     req.on('error', reject);
@@ -53,14 +53,10 @@ function jellyfinGet(endpoint) {
   });
 }
 
-function posterUrl(itemId) {
-  return `${JELLYFIN_URL}/Items/${itemId}/Images/Primary?maxWidth=600&api_key=${JELLYFIN_API_KEY}`;
-}
-function backdropUrl(itemId) {
-  return `${JELLYFIN_URL}/Items/${itemId}/Images/Backdrop/0?maxWidth=1920&api_key=${JELLYFIN_API_KEY}`;
-}
+function posterUrl(itemId) { return `${JELLYFIN_URL}/Items/${itemId}/Images/Primary?maxWidth=600&api_key=${JELLYFIN_API_KEY}`; }
+function backdropUrl(itemId) { return `${JELLYFIN_URL}/Items/${itemId}/Images/Backdrop/0?maxWidth=1920&api_key=${JELLYFIN_API_KEY}`; }
 
-// ── Admin user ID ──
+// ── Admin user ──
 let adminUserId = null;
 async function getAdminUserId() {
   if (adminUserId) return adminUserId;
@@ -69,10 +65,24 @@ async function getAdminUserId() {
     const admin = users.find(u => u.Policy && u.Policy.IsAdministrator) || users[0];
     adminUserId = admin ? admin.Id : null;
     return adminUserId;
-  } catch (e) {
-    console.error('[error] getAdminUserId:', e.message);
-    return null;
-  }
+  } catch (e) { return null; }
+}
+
+// ── Cache helper ──
+function makeCache(ttl, fetcher) {
+  let cache = null, lastFetch = 0;
+  return async (...args) => {
+    const now = Date.now();
+    if (cache !== null && now - lastFetch < ttl) return cache;
+    try {
+      cache = await fetcher(...args);
+      lastFetch = now;
+      return cache;
+    } catch (e) {
+      console.error('[error]', e.message);
+      return cache;
+    }
+  };
 }
 
 // ── Now Playing ──
@@ -100,12 +110,10 @@ async function getNowPlaying() {
 
     let fullItem = item;
     try {
-      fullItem = await jellyfinGet(`/Items/${item.Id}?fields=Overview,Taglines,Genres,OfficialRating,CommunityRating,People,MediaStreams`);
-    } catch (e) {
-      console.warn('[warn] Could not fetch full item:', e.message);
-    }
+      fullItem = await jellyfinGet(`/Items/${item.Id}?fields=Overview,Taglines,Genres,OfficialRating,CommunityRating,People,MediaStreams,ProviderIds`);
+    } catch (e) {}
 
-    // Get next up item if available
+    // Next up for TV
     let nextUp = null;
     try {
       if (item.Type === 'Episode' && item.SeriesId) {
@@ -114,38 +122,33 @@ async function getNowPlaying() {
           const n = nextData.Items[0];
           nextUp = {
             title: n.SeriesName || n.Name,
-            subtitle: n.SeriesName ? `S${String(n.ParentIndexNumber).padStart(2,'0')}E${String(n.IndexNumber).padStart(2,'0')} · ${n.Name}` : null,
+            subtitle: n.SeriesName ? `S${String(n.ParentIndexNumber||0).padStart(2,'0')}E${String(n.IndexNumber||0).padStart(2,'0')} · ${n.Name}` : null,
             posterUrl: posterUrl(n.Id),
           };
         }
       }
     } catch (e) {}
 
-    // Enrich with TMDB
-    let tmdbData = null;
+    // TMDB enrichment + trailer
+    let trailerKey = null;
     if (TMDB_API_KEY && fullItem.ProviderIds) {
       const tmdbId = fullItem.ProviderIds.Tmdb || fullItem.ProviderIds.tmdb;
       if (tmdbId) {
         try {
           const type = item.Type === 'Movie' ? 'movie' : 'tv';
-          tmdbData = await httpGet(`https://api.themoviedb.org/3/${type}/${tmdbId}?api_key=${TMDB_API_KEY}&append_to_response=videos,release_dates`);
+          const tmdb = await httpGet(`https://api.themoviedb.org/3/${type}/${tmdbId}?api_key=${TMDB_API_KEY}&append_to_response=videos`);
+          if (tmdb.videos && tmdb.videos.results) {
+            const t = tmdb.videos.results.find(v => v.type === 'Trailer' && v.site === 'YouTube');
+            if (t) trailerKey = t.key;
+          }
         } catch (e) {}
       }
     }
 
-    // Trailer
-    let trailerKey = null;
-    if (tmdbData && tmdbData.videos && tmdbData.videos.results) {
-      const trailer = tmdbData.videos.results.find(v => v.type === 'Trailer' && v.site === 'YouTube');
-      if (trailer) trailerKey = trailer.key;
-    }
-
+    const director = (fullItem.People || []).find(p => p.Type === 'Director');
     fullItem.posterUrl = posterUrl(item.Id);
     fullItem.backdropUrl = backdropUrl(item.Id);
     fullItem.RunTimeTicks = fullItem.RunTimeTicks || item.RunTimeTicks;
-
-    // Director
-    const director = (fullItem.People || []).find(p => p.Type === 'Director');
 
     nowPlayingCache = {
       item: fullItem,
@@ -153,7 +156,7 @@ async function getNowPlaying() {
       runtimeTicks: fullItem.RunTimeTicks || 0,
       isPaused: playState.IsPaused || false,
       sessionUser: playing.UserName || '',
-      allUsers: activeSessions.map(s => s.UserName).filter(Boolean),
+      allUsers: activeSessions.map(s => ({ user: s.UserName, title: s.NowPlayingItem.Name, isPaused: s.PlayState.IsPaused })),
       director: director ? director.Name : null,
       trailerKey,
       nextUp,
@@ -167,97 +170,105 @@ async function getNowPlaying() {
 }
 
 // ── Recently Added ──
-let recentlyAddedCache = null;
-let recentlyAddedLastFetch = 0;
-const RECENTLY_ADDED_TTL = 5 * 60 * 1000;
-
-async function getRecentlyAdded() {
-  const now = Date.now();
-  if (recentlyAddedCache && now - recentlyAddedLastFetch < RECENTLY_ADDED_TTL) return recentlyAddedCache;
-  try {
-    const userId = await getAdminUserId();
-    const endpoint = userId
-      ? `/Users/${userId}/Items/Latest?MediaType=Video&IncludeItemTypes=Movie&Limit=12&fields=Overview,Genres,ProductionYear,OfficialRating,CommunityRating`
-      : `/Items/Latest?MediaType=Video&IncludeItemTypes=Movie&Limit=12&fields=Overview,Genres,ProductionYear,OfficialRating,CommunityRating`;
-    const data = await jellyfinGet(endpoint);
-    recentlyAddedLastFetch = now;
-    recentlyAddedCache = (data || []).map(item => ({
-      id: item.Id,
-      title: item.Name,
-      year: item.ProductionYear,
-      genre: (item.Genres || []).slice(0, 2).join(' / '),
-      rating: item.OfficialRating,
-      score: item.CommunityRating,
-      overview: item.Overview,
-      posterUrl: posterUrl(item.Id),
-      backdropUrl: backdropUrl(item.Id),
-    }));
-    return recentlyAddedCache;
-  } catch (e) {
-    console.error('[error] getRecentlyAdded:', e.message);
-    return recentlyAddedCache || [];
-  }
-}
+const getRecentlyAdded = makeCache(5 * 60 * 1000, async () => {
+  const userId = await getAdminUserId();
+  const ep = userId
+    ? `/Users/${userId}/Items/Latest?MediaType=Video&IncludeItemTypes=Movie&Limit=12&fields=Overview,Genres,ProductionYear,OfficialRating,CommunityRating`
+    : `/Items/Latest?MediaType=Video&IncludeItemTypes=Movie&Limit=12`;
+  const data = await jellyfinGet(ep);
+  return (data || []).map(i => ({
+    id: i.Id, title: i.Name, year: i.ProductionYear,
+    genre: (i.Genres || []).slice(0,2).join(' / '),
+    rating: i.OfficialRating, score: i.CommunityRating,
+    overview: i.Overview, posterUrl: posterUrl(i.Id), backdropUrl: backdropUrl(i.Id),
+  }));
+});
 
 // ── Coming Soon ──
-let comingSoonCache = null;
-let comingSoonLastFetch = 0;
-const COMING_SOON_TTL = 60 * 60 * 1000;
-
-async function getComingSoon() {
+const getComingSoon = makeCache(60 * 60 * 1000, async () => {
   if (!TMDB_API_KEY) return [];
-  const now = Date.now();
-  if (comingSoonCache && now - comingSoonLastFetch < COMING_SOON_TTL) return comingSoonCache;
-  try {
-    const data = await httpGet(`https://api.themoviedb.org/3/movie/upcoming?api_key=${TMDB_API_KEY}&language=en-US&page=1`);
-    comingSoonLastFetch = now;
-    comingSoonCache = (data.results || []).slice(0, 12).map(m => ({
-      id: m.id,
-      title: m.title,
-      year: m.release_date ? m.release_date.split('-')[0] : null,
-      releaseDate: m.release_date,
-      overview: m.overview,
-      score: m.vote_average,
-      posterUrl: m.poster_path ? `https://image.tmdb.org/t/p/w500${m.poster_path}` : null,
-      backdropUrl: m.backdrop_path ? `https://image.tmdb.org/t/p/w1280${m.backdrop_path}` : null,
-    }));
-    return comingSoonCache;
-  } catch (e) {
-    console.error('[error] getComingSoon:', e.message);
-    return comingSoonCache || [];
-  }
+  const data = await httpGet(`https://api.themoviedb.org/3/movie/upcoming?api_key=${TMDB_API_KEY}&language=en-US&page=1`);
+  return (data.results || []).slice(0,12).map(m => ({
+    id: m.id, title: m.title, year: m.release_date ? m.release_date.split('-')[0] : null,
+    releaseDate: m.release_date, overview: m.overview, score: m.vote_average,
+    posterUrl: m.poster_path ? `https://image.tmdb.org/t/p/w500${m.poster_path}` : null,
+    backdropUrl: m.backdrop_path ? `https://image.tmdb.org/t/p/w1280${m.backdrop_path}` : null,
+  }));
+});
+
+// ── Continue Watching ──
+const getContinueWatching = makeCache(3 * 60 * 1000, async () => {
+  const userId = await getAdminUserId();
+  if (!userId) return [];
+  const data = await jellyfinGet(`/Users/${userId}/Items/Resume?MediaType=Video&Limit=8&fields=Overview,Genres,ProductionYear,OfficialRating,UserData`);
+  return (data.Items || []).map(i => ({
+    id: i.Id, title: i.Name, year: i.ProductionYear,
+    type: i.Type, seriesName: i.SeriesName,
+    genre: (i.Genres || []).slice(0,1).join(''),
+    posterUrl: posterUrl(i.Id),
+    progress: i.UserData ? Math.round((i.UserData.PlayedPercentage || 0)) : 0,
+  }));
+});
+
+// ── Popular (most played) ──
+const getPopular = makeCache(30 * 60 * 1000, async () => {
+  const data = await jellyfinGet(`/Items?IncludeItemTypes=Movie&SortBy=PlayCount&SortOrder=Descending&Limit=12&fields=Overview,Genres,ProductionYear,OfficialRating,CommunityRating&Recursive=true`);
+  return (data.Items || []).map(i => ({
+    id: i.Id, title: i.Name, year: i.ProductionYear,
+    genre: (i.Genres || []).slice(0,2).join(' / '),
+    score: i.CommunityRating, overview: i.Overview,
+    posterUrl: posterUrl(i.Id), backdropUrl: backdropUrl(i.Id),
+  }));
+});
+
+// ── Library Stats ──
+const getStats = makeCache(10 * 60 * 1000, async () => {
+  const [movies, shows, episodes] = await Promise.all([
+    jellyfinGet('/Items?IncludeItemTypes=Movie&Recursive=true&Limit=0'),
+    jellyfinGet('/Items?IncludeItemTypes=Series&Recursive=true&Limit=0'),
+    jellyfinGet('/Items?IncludeItemTypes=Episode&Recursive=true&Limit=0'),
+  ]);
+  return {
+    movies: movies.TotalRecordCount || 0,
+    shows: shows.TotalRecordCount || 0,
+    episodes: episodes.TotalRecordCount || 0,
+  };
+});
+
+// ── Random Movie ──
+async function getRandomMovie() {
+  const userId = await getAdminUserId();
+  const data = await jellyfinGet(`/Items?IncludeItemTypes=Movie&Recursive=true&SortBy=Random&Limit=1&fields=Overview,Genres,ProductionYear,OfficialRating,CommunityRating,People,Taglines`);
+  const item = (data.Items || [])[0];
+  if (!item) return null;
+  return {
+    id: item.Id, title: item.Name, year: item.ProductionYear,
+    genre: (item.Genres || []).slice(0,2).join(' / '),
+    score: item.CommunityRating, overview: item.Overview,
+    tagline: item.Taglines?.[0] || '',
+    rating: item.OfficialRating,
+    director: (item.People || []).find(p => p.Type === 'Director')?.Name || null,
+    cast: (item.People || []).filter(p => p.Type === 'Actor').slice(0,3).map(p => p.Name),
+    posterUrl: posterUrl(item.Id), backdropUrl: backdropUrl(item.Id),
+  };
 }
 
 // ── Weather ──
-let weatherCache = null;
-let weatherLastFetch = 0;
-const WEATHER_TTL = 15 * 60 * 1000;
-
+const weatherCaches = {};
 async function getWeather(city) {
   if (!city) return null;
   const now = Date.now();
-  if (weatherCache && weatherCache.city === city && now - weatherLastFetch < WEATHER_TTL) return weatherCache;
+  if (weatherCaches[city] && now - weatherCaches[city].ts < 15 * 60 * 1000) return weatherCaches[city].data;
   try {
     const data = await httpGet(`https://wttr.in/${encodeURIComponent(city)}?format=j1`);
-    weatherLastFetch = now;
-    const current = data.current_condition[0];
-    weatherCache = {
-      city,
-      temp: current.temp_C,
-      tempF: current.temp_F,
-      desc: current.weatherDesc[0].value,
-      humidity: current.humidity,
-      feelsLike: current.FeelsLikeC,
-      code: parseInt(current.weatherCode),
-    };
-    return weatherCache;
-  } catch (e) {
-    console.error('[error] getWeather:', e.message);
-    return null;
-  }
+    const cur = data.current_condition[0];
+    const result = { city, temp: cur.temp_C, tempF: cur.temp_F, desc: cur.weatherDesc[0].value, humidity: cur.humidity, feelsLike: cur.FeelsLikeC, code: parseInt(cur.weatherCode) };
+    weatherCaches[city] = { ts: now, data: result };
+    return result;
+  } catch (e) { return weatherCaches[city]?.data || null; }
 }
 
-// ── Static server ──
+// ── Server ──
 const PUBLIC_DIR = path.resolve('/app/public');
 
 const server = http.createServer(async (req, res) => {
@@ -265,55 +276,27 @@ const server = http.createServer(async (req, res) => {
   const pathname = parsed.pathname;
   res.setHeader('Access-Control-Allow-Origin', '*');
 
-  if (pathname === '/api/now-playing') {
+  const routes = {
+    '/api/now-playing': async () => JSON.stringify(await getNowPlaying() || null),
+    '/api/recently-added': async () => JSON.stringify(await getRecentlyAdded()),
+    '/api/coming-soon': async () => JSON.stringify(await getComingSoon()),
+    '/api/continue-watching': async () => JSON.stringify(await getContinueWatching()),
+    '/api/popular': async () => JSON.stringify(await getPopular()),
+    '/api/stats': async () => JSON.stringify(await getStats()),
+    '/api/random': async () => JSON.stringify(await getRandomMovie()),
+    '/api/weather': async () => JSON.stringify(await getWeather(parsed.query.city || '')),
+    '/health': async () => JSON.stringify({ status: 'ok', jellyfin: JELLYFIN_URL, tmdb: !!TMDB_API_KEY }),
+  };
+
+  if (routes[pathname]) {
     try {
-      const data = await getNowPlaying();
+      const body = await routes[pathname]();
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify(data || null));
+      res.end(body);
     } catch (e) {
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: e.message }));
     }
-    return;
-  }
-
-  if (pathname === '/api/recently-added') {
-    try {
-      const data = await getRecentlyAdded();
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify(data));
-    } catch (e) {
-      res.writeHead(500); res.end(JSON.stringify({ error: e.message }));
-    }
-    return;
-  }
-
-  if (pathname === '/api/coming-soon') {
-    try {
-      const data = await getComingSoon();
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify(data));
-    } catch (e) {
-      res.writeHead(500); res.end(JSON.stringify({ error: e.message }));
-    }
-    return;
-  }
-
-  if (pathname === '/api/weather') {
-    const city = parsed.query.city || '';
-    try {
-      const data = await getWeather(city);
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify(data || null));
-    } catch (e) {
-      res.writeHead(500); res.end(JSON.stringify({ error: e.message }));
-    }
-    return;
-  }
-
-  if (pathname === '/health') {
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ status: 'ok', jellyfin: JELLYFIN_URL, tmdb: !!TMDB_API_KEY }));
     return;
   }
 
@@ -327,7 +310,7 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`\n🎬 JellyPoster`);
+  console.log(`\n🎬 JellyPoster v2`);
   console.log(`   http://localhost:${PORT}`);
   console.log(`   Jellyfin: ${JELLYFIN_URL}`);
   console.log(`   TMDB: ${TMDB_API_KEY ? 'enabled' : 'disabled'}\n`);
