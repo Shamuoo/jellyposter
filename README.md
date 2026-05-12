@@ -4,15 +4,6 @@ A cinema-style home theater display for Jellyfin. Shows what's currently playing
 
 > **Note:** This project was entirely AI-coded (Claude by Anthropic) as a personal home theater side project. Shared as-is — use it, fork it, break it.
 
----
-
-## Screenshots
-
-*Now Playing — full poster with cinema overlay*
-*Idle — recently added, coming soon, continue watching, and more*
-*Browse — full library grid with filters*
-
----
 
 ## Features
 
