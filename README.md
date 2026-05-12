@@ -1,5 +1,7 @@
 # 🎬 JellyPoster
 
+THIS IS COMPLETELY AI-CODED- I MADE THIS FOR MYSELF. BUGS AND ISSUES ARE EXPECTED
+
 Cinema-style "Now Playing" display for your Jellyfin home theater setup.
 
 Shows: movie poster, title, tagline, genre, runtime, age rating, synopsis, community rating, and a live progress bar.
