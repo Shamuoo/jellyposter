@@ -808,7 +808,7 @@
   function mkCard(data,type){
     const card=document.createElement('div');card.className='poster-card';
     card.addEventListener('click',()=>{openDetail({...data,type:type||data.type||'Movie'});playSound('open');});
-    const imgWrap=document.createElement('div');imgWrap.style.position='relative';
+    const imgWrap=document.createElement('div');imgWrap.style.cssText='position:relative;pointer-events:none;';
     if(data.posterUrl){const img=document.createElement('img');img.className='poster-card-img';img.src=data.posterUrl;img.alt=data.title||'';img.onerror=()=>img.replaceWith(mkPh());imgWrap.appendChild(img);}
     else imgWrap.appendChild(mkPh());
     const badges=mkQualityBadges(data.qualities,data.versionCount);if(badges)imgWrap.appendChild(badges);
@@ -957,7 +957,7 @@
       (data.items || []).forEach(item => {
         const card = document.createElement('div'); card.className = 'bc';
         card.addEventListener('click', () => { openDetail(item); playSound('open'); });
-        const bWrap = document.createElement('div'); bWrap.style.position = 'relative';
+        const bWrap = document.createElement('div'); bWrap.style.cssText = 'position:relative;pointer-events:none;';
         if (item.posterUrl) {
           const img = document.createElement('img'); img.className = 'bc-img'; img.src = item.posterUrl; img.alt = item.title || '';
           img.onerror = () => img.replaceWith(mkBcPh()); bWrap.appendChild(img);
