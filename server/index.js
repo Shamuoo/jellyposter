@@ -121,7 +121,7 @@ async function getRecentlyAdded() {
   if (recentlyAddedCache && now - recentlyAddedLastFetch < RECENTLY_ADDED_TTL) return recentlyAddedCache;
 
   try {
-    const data = await jellyfinGet('/Items/Latest?MediaType=Video&IncludeItemTypes=Movie&Limit=10&fields=Overview,Genres,ProductionYear,OfficialRating,CommunityRating');
+    const data = await jellyfinGet('/Users/00c02f8140e543428650ce22fc62f9f5/Items/Latest?MediaType=Video&IncludeItemTypes=Movie&Limit=10&fields=Overview,Genres,ProductionYear,OfficialRating,CommunityRating');
     recentlyAddedLastFetch = now;
     recentlyAddedCache = (data || []).map(item => ({
       id: item.Id,
