@@ -54,6 +54,29 @@
     #settings-btn{position:fixed;bottom:22px;right:22px;z-index:60;width:34px;height:34px;border-radius:50%;background:rgba(10,8,4,0.8);border:1px solid rgba(201,168,76,0.18);color:var(--accent);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 0.4s ease;backdrop-filter:blur(10px);}
     #settings-btn.visible{opacity:0.45;}
     #settings-btn.visible:hover{opacity:1;}
+
+    #browse-btn{position:fixed;bottom:22px;right:110px;z-index:60;width:34px;height:34px;border-radius:50%;background:rgba(10,8,4,0.8);border:1px solid rgba(201,168,76,0.18);color:var(--accent);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 0.4s ease;backdrop-filter:blur(10px);}
+    #browse-btn.visible{opacity:0.45;}
+    #browse-btn.visible:hover{opacity:1;}
+    #browse-overlay{position:fixed;inset:0;z-index:35;background:rgba(5,4,2,0.98);opacity:0;pointer-events:none;transition:opacity 0.3s ease;display:flex;flex-direction:column;}
+    #browse-overlay.open{opacity:1;pointer-events:all;}
+    #browse-header{display:flex;align-items:center;gap:14px;padding:22px 44px 14px;flex-shrink:0;border-bottom:1px solid rgba(201,168,76,0.06);}
+    #browse-back{font-size:8px;letter-spacing:0.25em;text-transform:uppercase;color:var(--accent);opacity:0.5;cursor:pointer;background:none;border:1px solid rgba(201,168,76,0.2);border-radius:4px;padding:5px 11px;transition:opacity 0.2s;}
+    #browse-back:hover{opacity:1;}
+    #browse-title{font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:0.4em;color:var(--cream);opacity:0.35;flex:1;}
+    #browse-count{font-size:8px;letter-spacing:0.18em;color:var(--cream);opacity:0.18;text-transform:uppercase;}
+    #browse-filters{display:flex;align-items:center;gap:8px;padding:10px 44px;flex-shrink:0;flex-wrap:wrap;border-bottom:1px solid rgba(255,255,255,0.04);}
+    .bf{padding:5px 9px;border-radius:4px;border:1px solid rgba(255,255,255,0.07);background:rgba(255,255,255,0.03);color:var(--cream);font-size:9px;letter-spacing:0.08em;outline:none;cursor:pointer;}
+    .bf option{background:#0a0804;}
+    #browse-grid{flex:1;overflow-y:auto;padding:14px 44px 44px;display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:12px;}
+    .bc{cursor:pointer;}
+    .bc-img{width:100%;aspect-ratio:2/3;object-fit:cover;border-radius:4px;border:1px solid rgba(255,255,255,0.06);background:#1a1510;display:block;transition:transform 0.2s,border-color 0.2s;}
+    .bc:hover .bc-img{transform:translateY(-3px);border-color:rgba(201,168,76,0.28);}
+    .bc-ph{width:100%;aspect-ratio:2/3;border-radius:4px;background:#1a1510;border:1px solid rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:center;font-size:6px;letter-spacing:0.15em;color:#2a2015;font-family:'Bebas Neue',sans-serif;}
+    .bc-title{font-size:7px;font-weight:700;color:var(--cream);opacity:0.52;margin-top:4px;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .bc-meta{font-size:6px;color:var(--cream);opacity:0.22;margin-top:1px;}
+    #browse-more{display:block;margin:16px auto;padding:8px 24px;border:1px solid rgba(201,168,76,0.18);border-radius:4px;background:transparent;color:var(--accent);font-size:8px;letter-spacing:0.28em;text-transform:uppercase;cursor:pointer;opacity:0.55;transition:opacity 0.2s;}
+    #browse-more:hover{opacity:1;}
     #search-btn{position:fixed;bottom:22px;right:66px;z-index:60;width:34px;height:34px;border-radius:50%;background:rgba(10,8,4,0.8);border:1px solid rgba(201,168,76,0.18);color:var(--accent);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 0.4s ease;backdrop-filter:blur(10px);}
     #search-btn.visible{opacity:0.45;}
     #search-btn.visible:hover{opacity:1;}
@@ -252,6 +275,7 @@
   <div id="toast-container"></div>
 
   <!-- Search -->
+  <button id="browse-btn">🎞</button>
   <button id="search-btn">🔍</button>
   <div id="search-overlay">
     <div id="search-wrap">
@@ -351,6 +375,32 @@
         <div id="detail-trailer"><canvas id="detail-qr" width="52" height="52"></canvas><div id="detail-trailer-text">Scan to watch trailer</div></div>
       </div>
     </div>
+  </div>
+
+
+  <!-- Browse All Movies -->
+  <div id="browse-overlay">
+    <div id="browse-header">
+      <button id="browse-back">← Back</button>
+      <div id="browse-title">All Movies</div>
+      <div id="browse-count"></div>
+    </div>
+    <div id="browse-filters">
+      <select class="bf" id="bf-sort">
+        <option value="SortName">A–Z</option>
+        <option value="PremiereDate">Year</option>
+        <option value="CommunityRating">Rating</option>
+        <option value="DateCreated">Date Added</option>
+        <option value="PlayCount">Most Played</option>
+      </select>
+      <select class="bf" id="bf-order">
+        <option value="Ascending">↑ Asc</option>
+        <option value="Descending">↓ Desc</option>
+      </select>
+      <select class="bf" id="bf-genre"><option value="">All Genres</option></select>
+    </div>
+    <div id="browse-grid"></div>
+    <button id="browse-more" style="display:none">Load More</button>
   </div>
 
   <!-- Screensaver -->
@@ -469,7 +519,7 @@
   // Settings panel
   const sBtn=document.getElementById('settings-btn'),sPanel=document.getElementById('settings-panel');
   let sBtnT;
-  function showSBtn(){sBtn.classList.add('visible');document.getElementById('search-btn').classList.add('visible');clearTimeout(sBtnT);sBtnT=setTimeout(()=>{if(!sPanel.classList.contains('open')){sBtn.classList.remove('visible');document.getElementById('search-btn').classList.remove('visible');}},4000);}
+  function showSBtn(){sBtn.classList.add('visible');document.getElementById('search-btn').classList.add('visible');document.getElementById('browse-btn').classList.add('visible');clearTimeout(sBtnT);sBtnT=setTimeout(()=>{if(!sPanel.classList.contains('open')){sBtn.classList.remove('visible');document.getElementById('search-btn').classList.remove('visible');document.getElementById('browse-btn').classList.remove('visible');}},4000);}
   document.addEventListener('mousemove',showSBtn);document.addEventListener('touchstart',showSBtn);showSBtn();
   sBtn.addEventListener('click',()=>{sPanel.classList.toggle('open');sBtn.classList.add('visible');clearTimeout(sBtnT);playSound('click');});
   document.addEventListener('click',e=>{if(!sPanel.contains(e.target)&&e.target!==sBtn){sPanel.classList.remove('open');showSBtn();}});
@@ -629,8 +679,8 @@
   function startSS(){if(!S.ss||!ssItems.length||!isIdle||ssActive)return;ssActive=true;document.getElementById('screensaver').classList.add('visible');showSSSlide(ssIdx);}
   function stopSS(){ssActive=false;document.getElementById('screensaver').classList.remove('visible');clearTimeout(ssTimer);clearInterval(ssProgT);document.getElementById('ss-bar').style.width='0%';}
   function showSSSlide(idx){
-const item=ssItems[idx%ssItems.length];if(!item)return;
-document.getElementById('ss-bg').style.backgroundImage=item.backdropUrl?`url('${item.backdropUrl}')`:item.posterUrl?`url('${item.posterUrl}')`:'';
+    const item=ssItems[idx%ssItems.length];if(!item)return;
+    document.getElementById('ss-bg').style.backgroundImage=item.backdropUrl?`url('${item.backdropUrl}')`:item.posterUrl?`url('${item.posterUrl}')`:'' ;
     document.getElementById('ss-title').textContent=item.title||'';
     document.getElementById('ss-meta').textContent=[item.year,item.genre].filter(Boolean).join(' · ');
     document.getElementById('ss-overview').textContent=item.overview||'';
@@ -770,6 +820,66 @@ document.getElementById('ss-bg').style.backgroundImage=item.backdropUrl?`url('${
     }
     updateProgress(positionTicks,runtimeTicks||item.RunTimeTicks);
   }
+
+
+  // ════ BROWSE ALL MOVIES ════
+  const browseOverlay = document.getElementById('browse-overlay');
+  let browseStart = 0, browseTotal = 0, browseLoading = false;
+  let browseSort = 'SortName', browseOrder = 'Ascending', browseGenre = '';
+
+  document.getElementById('browse-btn').addEventListener('click', () => { openBrowse(); playSound('open'); });
+  document.getElementById('browse-back').addEventListener('click', () => { browseOverlay.classList.remove('open'); playSound('click'); });
+
+  async function openBrowse() {
+    browseOverlay.classList.add('open');
+    browseStart = 0;
+    document.getElementById('browse-grid').innerHTML = '';
+    document.getElementById('browse-more').style.display = 'none';
+    await loadGenres();
+    await loadBrowse(false);
+  }
+
+  async function loadGenres() {
+    try {
+      const r = await fetch('/api/genres'); const genres = await r.json();
+      const sel = document.getElementById('bf-genre');
+      sel.innerHTML = '<option value="">All Genres</option>';
+      genres.forEach(g => { const o = document.createElement('option'); o.value = g; o.textContent = g; sel.appendChild(o); });
+    } catch (e) {}
+  }
+
+  async function loadBrowse(append) {
+    if (browseLoading) return;
+    browseLoading = true;
+    try {
+      let url = `/api/all-movies?sort=${browseSort}&order=${browseOrder}&start=${browseStart}`;
+      if (browseGenre) url += `&genre=${encodeURIComponent(browseGenre)}`;
+      const r = await fetch(url); const data = await r.json();
+      browseTotal = data.total || 0;
+      browseStart += (data.items || []).length;
+      document.getElementById('browse-count').textContent = `${browseTotal.toLocaleString()} movies`;
+      const grid = document.getElementById('browse-grid');
+      if (!append) grid.innerHTML = '';
+      (data.items || []).forEach(item => {
+        const card = document.createElement('div'); card.className = 'bc';
+        card.addEventListener('click', () => { openDetail(item); playSound('open'); });
+        if (item.posterUrl) {
+          const img = document.createElement('img'); img.className = 'bc-img'; img.src = item.posterUrl; img.alt = item.title || '';
+          img.onerror = () => img.replaceWith(mkBcPh()); card.appendChild(img);
+        } else card.appendChild(mkBcPh());
+        const t = document.createElement('div'); t.className = 'bc-title'; t.textContent = item.title || ''; card.appendChild(t);
+        const m = document.createElement('div'); m.className = 'bc-meta'; m.textContent = [item.year, item.score ? `★${item.score.toFixed(1)}` : ''].filter(Boolean).join(' · '); card.appendChild(m);
+        grid.appendChild(card);
+      });
+      const moreBtn = document.getElementById('browse-more');
+      moreBtn.style.display = browseStart < browseTotal ? 'block' : 'none';
+    } catch (e) {} finally { browseLoading = false; }
+  }
+  function mkBcPh() { const el = document.createElement('div'); el.className = 'bc-ph'; el.textContent = 'NO IMG'; return el; }
+  document.getElementById('browse-more').addEventListener('click', () => loadBrowse(true));
+  document.getElementById('bf-sort').addEventListener('change', e => { browseSort = e.target.value; browseStart = 0; loadBrowse(false); });
+  document.getElementById('bf-order').addEventListener('change', e => { browseOrder = e.target.value; browseStart = 0; loadBrowse(false); });
+  document.getElementById('bf-genre').addEventListener('change', e => { browseGenre = e.target.value; browseStart = 0; loadBrowse(false); });
 
   // ════ POLL ════
   async function poll(){try{const r=await fetch('/api/now-playing');const d=await r.json();if(d){lastWasPlaying=true;showNowPlaying(d);}else{if(lastWasPlaying||!isIdle)showIdle();lastWasPlaying=false;}}catch(e){}}

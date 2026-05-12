@@ -144,7 +144,7 @@ async function getNowPlaying() {
   } catch (e) { console.error('[error] getNowPlaying:', e.message); return nowPlayingCache; }
 }
 
-// ── Recently Added — track new arrivals ──
+// ── Recently Added ──
 let lastRecentIds = new Set();
 let newArrivals = [];
 
@@ -161,8 +161,6 @@ const getRecentlyAdded = cached('recent', 60 * 1000, async () => {
     director: (i.People || []).find(p => p.Type === 'Director') ? (i.People || []).find(p => p.Type === 'Director').Name : null,
     posterUrl: posterUrl(i.Id), backdropUrl: backdropUrl(i.Id),
   }));
-
-  // Detect new arrivals
   if (lastRecentIds.size > 0) {
     items.forEach(item => {
       if (!lastRecentIds.has(item.id)) {
@@ -172,7 +170,6 @@ const getRecentlyAdded = cached('recent', 60 * 1000, async () => {
     });
   }
   lastRecentIds = new Set(items.map(i => i.id));
-  // Trim arrivals older than 10 mins
   newArrivals = newArrivals.filter(a => Date.now() - a.arrivedAt < 10 * 60 * 1000);
   return items;
 });
@@ -202,8 +199,9 @@ const getContinueWatching = cached('continue', 2 * 60 * 1000, async () => {
 });
 
 const getPopular = cached('popular', 30 * 60 * 1000, async () => {
-  const data = await jellyfinGet(`/Items?IncludeItemTypes=Movie&SortBy=PlayCount&SortOrder=Descending&Limit=12&fields=Overview,Genres,ProductionYear,OfficialRating,CommunityRating,People&Recursive=true`);
-  return (data.Items || []).map(i => ({
+  // Only show movies that have actually been played (PlayCount > 0)
+  const data = await jellyfinGet(`/Items?IncludeItemTypes=Movie&SortBy=PlayCount&SortOrder=Descending&Limit=24&fields=Overview,Genres,ProductionYear,OfficialRating,CommunityRating,People,UserData&Recursive=true&Filters=IsPlayed`);
+  return (data.Items || []).filter(i => i.UserData && i.UserData.PlayCount > 0).slice(0, 12).map(i => ({
     id: i.Id, title: i.Name, year: i.ProductionYear,
     genre: (i.Genres || []).slice(0, 2).join(' / '),
     score: i.CommunityRating, overview: i.Overview, rating: i.OfficialRating,
@@ -213,7 +211,6 @@ const getPopular = cached('popular', 30 * 60 * 1000, async () => {
   }));
 });
 
-// ── Watch History ──
 const getWatchHistory = cached('history', 5 * 60 * 1000, async () => {
   const userId = await getAdminUserId();
   if (!userId) return [];
@@ -227,19 +224,18 @@ const getWatchHistory = cached('history', 5 * 60 * 1000, async () => {
   }));
 });
 
-// ── On This Day ──
+// ── On This Day — only popular movies (vote_count > 100) ──
 const getOnThisDay = cached('onthisday', 60 * 60 * 1000, async () => {
+  if (!TMDB_API_KEY) return [];
   const now = new Date();
   const month = now.getMonth() + 1;
   const day = now.getDate();
-  if (!TMDB_API_KEY) return [];
   try {
-    // Search TMDB for movies with today's release date across years
     const results = [];
-    for (let y = now.getFullYear() - 30; y < now.getFullYear(); y += 5) {
+    for (let y = now.getFullYear() - 40; y < now.getFullYear(); y += 5) {
       try {
         const dateStr = `${y}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-        const data = await httpGet(`https://api.themoviedb.org/3/discover/movie?api_key=${TMDB_API_KEY}&primary_release_date.gte=${dateStr}&primary_release_date.lte=${dateStr}&sort_by=vote_count.desc`);
+        const data = await httpGet(`https://api.themoviedb.org/3/discover/movie?api_key=${TMDB_API_KEY}&primary_release_date.gte=${dateStr}&primary_release_date.lte=${dateStr}&sort_by=vote_count.desc&vote_count.gte=100`);
         if (data.results && data.results.length) {
           results.push(...data.results.slice(0, 2).map(m => ({
             id: m.id, title: m.title,
@@ -280,22 +276,47 @@ async function getRandomMovie() {
   };
 }
 
-// ── Library Search ──
+// ── Search — client-side filter on title match ──
 async function searchLibrary(query) {
   if (!query || query.length < 2) return [];
-  const userId = await getAdminUserId();
-  const endpoint = userId
-    ? `/Users/${userId}/Items?SearchTerm=${encodeURIComponent(query)}&IncludeItemTypes=Movie,Series&Recursive=true&Limit=12&fields=Overview,Genres,ProductionYear,OfficialRating,CommunityRating,People`
-    : `/Items?SearchTerm=${encodeURIComponent(query)}&IncludeItemTypes=Movie,Series&Recursive=true&Limit=12&fields=Overview,Genres,ProductionYear,OfficialRating,CommunityRating`;
+  const data = await jellyfinGet(`/Items?SearchTerm=${encodeURIComponent(query)}&IncludeItemTypes=Movie,Series&Recursive=true&Limit=24&SortBy=SortName&fields=Overview,Genres,ProductionYear,OfficialRating,CommunityRating,People`);
+  const q = query.toLowerCase();
+  return (data.Items || [])
+    .filter(i => i.Name && i.Name.toLowerCase().includes(q))
+    .slice(0, 12)
+    .map(i => ({
+      id: i.Id, title: i.Name, year: i.ProductionYear, type: i.Type,
+      genre: (i.Genres || []).slice(0, 2).join(' / '),
+      score: i.CommunityRating, overview: i.Overview, rating: i.OfficialRating,
+      cast: (i.People || []).filter(p => p.Type === 'Actor').slice(0, 5).map(p => p.Name),
+      director: (i.People || []).find(p => p.Type === 'Director') ? (i.People || []).find(p => p.Type === 'Director').Name : null,
+      posterUrl: posterUrl(i.Id), backdropUrl: backdropUrl(i.Id),
+    }));
+}
+
+// ── All Movies ──
+async function getAllMovies(sortBy, sortOrder, genre, minYear, maxYear, startIndex) {
+  let endpoint = `/Items?IncludeItemTypes=Movie&Recursive=true&fields=Overview,Genres,ProductionYear,OfficialRating,CommunityRating&Limit=48&StartIndex=${startIndex || 0}`;
+  endpoint += `&SortBy=${sortBy || 'SortName'}&SortOrder=${sortOrder || 'Ascending'}`;
+  if (genre) endpoint += `&Genres=${encodeURIComponent(genre)}`;
+  if (minYear) endpoint += `&MinPremiereDate=${minYear}-01-01`;
+  if (maxYear) endpoint += `&MaxPremiereDate=${maxYear}-12-31`;
   const data = await jellyfinGet(endpoint);
-  return (data.Items || []).map(i => ({
-    id: i.Id, title: i.Name, year: i.ProductionYear, type: i.Type,
-    genre: (i.Genres || []).slice(0, 2).join(' / '),
-    score: i.CommunityRating, overview: i.Overview, rating: i.OfficialRating,
-    cast: (i.People || []).filter(p => p.Type === 'Actor').slice(0, 5).map(p => p.Name),
-    director: (i.People || []).find(p => p.Type === 'Director') ? (i.People || []).find(p => p.Type === 'Director').Name : null,
-    posterUrl: posterUrl(i.Id), backdropUrl: backdropUrl(i.Id),
-  }));
+  return {
+    total: data.TotalRecordCount || 0,
+    items: (data.Items || []).map(i => ({
+      id: i.Id, title: i.Name, year: i.ProductionYear,
+      genre: (i.Genres || []).slice(0, 2).join(' / '),
+      score: i.CommunityRating, overview: i.Overview, rating: i.OfficialRating,
+      posterUrl: posterUrl(i.Id), backdropUrl: backdropUrl(i.Id),
+    })),
+  };
+}
+
+// ── All Genres ──
+async function getAllGenres() {
+  const data = await jellyfinGet('/Genres?IncludeItemTypes=Movie&Recursive=true&Limit=100');
+  return (data.Items || []).map(g => g.Name).sort();
 }
 
 const weatherCaches = {};
@@ -323,7 +344,7 @@ const server = http.createServer(async (req, res) => {
 
   const routes = {
     '/api/now-playing': async () => JSON.stringify(await getNowPlaying() || null),
-    '/api/recently-added': async () => { const d = await getRecentlyAdded(); return JSON.stringify(d || []); },
+    '/api/recently-added': async () => JSON.stringify(await getRecentlyAdded() || []),
     '/api/coming-soon': async () => JSON.stringify(await getComingSoon() || []),
     '/api/continue-watching': async () => JSON.stringify(await getContinueWatching() || []),
     '/api/popular': async () => JSON.stringify(await getPopular() || []),
@@ -333,6 +354,8 @@ const server = http.createServer(async (req, res) => {
     '/api/random': async () => JSON.stringify(await getRandomMovie()),
     '/api/new-arrivals': async () => JSON.stringify(newArrivals),
     '/api/search': async () => JSON.stringify(await searchLibrary(parsed.query.q || '')),
+    '/api/all-movies': async () => JSON.stringify(await getAllMovies(parsed.query.sort, parsed.query.order, parsed.query.genre, parsed.query.minYear, parsed.query.maxYear, parseInt(parsed.query.start || '0'))),
+    '/api/genres': async () => JSON.stringify(await getAllGenres()),
     '/api/weather': async () => JSON.stringify(await getWeather(parsed.query.city || '')),
     '/health': async () => JSON.stringify({ status: 'ok', jellyfin: JELLYFIN_URL, tmdb: !!TMDB_API_KEY }),
   };
