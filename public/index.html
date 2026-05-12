@@ -536,8 +536,7 @@
   function stopSS(){ ssActive=false; document.getElementById('screensaver').classList.remove('visible'); clearTimeout(ssTimer); clearInterval(ssProgT); document.getElementById('ss-bar').style.width='0%'; }
   function showSSSlide(idx){
     const item=ssItems[idx%ssItems.length]; if(!item)return;
-    document.getElementById('ss-bg').style.backgroundImage=item.backdropUrl?`url('${item.backdropUrl}')`:item.posterUrl?`url('${item.posterUrl}')`):'';
-    document.getElementById('ss-title').textContent=item.title||'';
+document.getElementById('ss-bg').style.backgroundImage=item.backdropUrl?`url('${item.backdropUrl}')`:item.posterUrl?`url('${item.posterUrl}')`:'';    document.getElementById('ss-title').textContent=item.title||'';
     document.getElementById('ss-meta').textContent=[item.year,item.genre].filter(Boolean).join(' · ');
     document.getElementById('ss-overview').textContent=item.overview||'';
     let pct=0; clearInterval(ssProgT); document.getElementById('ss-bar').style.width='0%';
