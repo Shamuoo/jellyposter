@@ -103,7 +103,7 @@ async function getNowPlaying() {
     const ps = playing.PlayState;
     let full = item;
     try { full = await jellyfinGet(`/Items/${item.Id}?fields=Overview,Taglines,Genres,OfficialRating,CommunityRating,People,MediaStreams`); } catch (e) {}
- f2a51be46530346163e22c7183c79cf99803ee44
+    let nextUp = null;
     try {
       if (item.Type === 'Episode' && item.SeriesId) {
         const nd = await jellyfinGet(`/Shows/NextUp?SeriesId=${item.SeriesId}&Limit=1&fields=Overview`);
