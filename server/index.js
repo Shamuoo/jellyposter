@@ -85,7 +85,7 @@ async function getNowPlaying() {
     const item = playing.NowPlayingItem;
     const ps = playing.PlayState;
     let full = item;
-    try { full = await jellyfinGet(`/Items/${item.Id}?fields=Overview,Taglines,Genres,OfficialRating,CommunityRating,People,MediaStreams,ProviderIds`); } catch (e) {}
+    try { full = await jellyfinGet(`/Items/${item.Id}?fieldstry { full = await jellyfinGet(`/Items/${item.Id}?fields=Overview,Taglines,Genres,OfficialRating,CommunityRating,People,MediaStreams`); } catch (e) {}Overview,Taglines,Genres,OfficialRating,CommunityRating,People,MediaStreams,ProviderIds`); } catch (e) {}
     let nextUp = null;
     try {
       if (item.Type === 'Episode' && item.SeriesId) {
