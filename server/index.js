@@ -62,7 +62,13 @@ function qualityFromStreams(streams) {
   const video = streams.find(s => s.Type === 'Video');
   if (!video) return null;
   const h = video.Height || 0;
-  const is3D = streams.some(s => s.Type === 'Video' && (s.Video3DFormat || (video.DisplayTitle && video.DisplayTitle.toLowerCase().includes('3d'))));
+  // Check for 3D via multiple Jellyfin fields
+  const is3D = (
+    video.Video3DFormat ||
+    (video.DisplayTitle && /\b3d\b/i.test(video.DisplayTitle)) ||
+    (video.Title && /\b3d\b/i.test(video.Title)) ||
+    streams.some(s => s.DisplayTitle && /\b3d\b/i.test(s.DisplayTitle))
+  );
   if (is3D) return '3D';
   if (h >= 2160) return '4K';
   if (h >= 1080) return '1080p';
@@ -171,15 +177,20 @@ async function getNowPlaying() {
       }
     } catch (e) {}
     let trailerKey = null;
+    let castPhotos = [];
     if (TMDB_API_KEY) {
       try {
         const type = item.Type === 'Movie' ? 'movie' : 'tv';
         const search = await httpGet(`https://api.themoviedb.org/3/search/${type}?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(item.Name)}&year=${item.ProductionYear||''}`);
         const tmdbId = search.results && search.results[0] ? search.results[0].id : null;
         if (tmdbId) {
-          const td = await httpGet(`https://api.themoviedb.org/3/${type}/${tmdbId}?api_key=${TMDB_API_KEY}&append_to_response=videos`);
+          const td = await httpGet(`https://api.themoviedb.org/3/${type}/${tmdbId}?api_key=${TMDB_API_KEY}&append_to_response=videos,credits`);
           const t = (td.videos && td.videos.results || []).find(v => v.type === 'Trailer' && v.site === 'YouTube');
           if (t) trailerKey = t.key;
+          // Get cast photos
+          if (td.credits && td.credits.cast) {
+            castPhotos = td.credits.cast.slice(0, 5).map(c => c.profile_path || null);
+          }
         }
       } catch (e) {}
     }
@@ -196,7 +207,7 @@ async function getNowPlaying() {
       sessionUser: playing.UserName || '',
       allUsers: active.map(s => ({ user: s.UserName, title: s.NowPlayingItem.Name, isPaused: s.PlayState.IsPaused })),
       director: director ? director.Name : null,
-      quality, trailerKey, nextUp,
+      quality, trailerKey, nextUp, castPhotos,
     };
     return nowPlayingCache;
   } catch (e) { console.error('[error] getNowPlaying:', e.message); return nowPlayingCache; }
