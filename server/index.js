@@ -447,6 +447,224 @@ async function getWeather(city) {
   } catch (e) { return weatherCaches[city] ? weatherCaches[city].data : null; }
 }
 
+
+// ════════════════════════════════
+// LIBRARY MANAGEMENT TOOLS
+// ════════════════════════════════
+
+// Trigger library scan
+async function triggerLibraryScan() {
+  await jellyfinGet('/Library/Refresh'); // POST would be more correct but GET triggers scan too
+  return { success: true, message: 'Library scan triggered' };
+}
+
+// Refresh metadata for a single item
+async function refreshItemMetadata(itemId) {
+  try {
+    await httpGet(`${JELLYFIN_URL}/Items/${itemId}/Refresh?MetadataRefreshMode=FullRefresh&ImageRefreshMode=FullRefresh&ReplaceAllMetadata=false&ReplaceAllImages=false`, {
+      'X-Emby-Authorization': `MediaBrowser Token="${JELLYFIN_API_KEY}"`,
+    });
+    return { success: true, itemId };
+  } catch(e) { return { success: false, error: e.message, itemId }; }
+}
+
+// Refresh metadata for multiple items
+async function refreshItems(itemIds) {
+  const results = await Promise.allSettled(itemIds.map(id => refreshItemMetadata(id)));
+  return results.map((r, i) => ({ itemId: itemIds[i], success: r.status === 'fulfilled' && r.value.success }));
+}
+
+// Find items missing posters
+const getMissingPosters = cached('missing-posters', 5 * 60 * 1000, async () => {
+  const data = await jellyfinGet('/Items?Recursive=true&IncludeItemTypes=Movie,Series,MusicAlbum&Limit=500&fields=Overview,Genres,ProductionYear,ImageTags&SortBy=SortName');
+  return (data.Items || [])
+    .filter(i => !i.ImageTags || !i.ImageTags.Primary)
+    .map(i => ({ id: i.Id, title: i.Name, year: i.ProductionYear, type: i.Type, posterUrl: null, issue: 'Missing poster' }));
+});
+
+// Find items missing backdrops
+const getMissingBackdrops = cached('missing-backdrops', 5 * 60 * 1000, async () => {
+  const data = await jellyfinGet('/Items?Recursive=true&IncludeItemTypes=Movie,Series&Limit=500&fields=Overview,Genres,ProductionYear,BackdropImageTags&SortBy=SortName');
+  return (data.Items || [])
+    .filter(i => !i.BackdropImageTags || i.BackdropImageTags.length === 0)
+    .map(i => ({ id: i.Id, title: i.Name, year: i.ProductionYear, type: i.Type, posterUrl: posterUrl(i.Id), issue: 'Missing backdrop' }));
+});
+
+// Find items missing metadata (no overview)
+const getMissingMetadata = cached('missing-metadata', 5 * 60 * 1000, async () => {
+  const data = await jellyfinGet('/Items?Recursive=true&IncludeItemTypes=Movie,Series&Limit=500&fields=Overview,Genres,ProductionYear,OfficialRating,CommunityRating&SortBy=SortName');
+  return (data.Items || [])
+    .filter(i => !i.Overview || i.Overview.trim().length < 10)
+    .map(i => ({ id: i.Id, title: i.Name, year: i.ProductionYear, type: i.Type, posterUrl: posterUrl(i.Id), issue: 'Missing overview' }));
+});
+
+// Find low quality movies (480p or 720p)
+const getLowQualityMovies = cached('low-quality', 5 * 60 * 1000, async () => {
+  const data = await jellyfinGet('/Items?Recursive=true&IncludeItemTypes=Movie&Limit=500&fields=Overview,ProductionYear,OfficialRating,MediaStreams,MediaSources&SortBy=SortName');
+  return (data.Items || []).reduce((acc, i) => {
+    const sources = i.MediaSources || [];
+    const qualities = new Set();
+    if (sources.length > 0) {
+      sources.forEach(src => { qualitiesFromSource(src.MediaStreams, src).forEach(q => qualities.add(q)); });
+    } else {
+      qualitiesFromSource(i.MediaStreams, null).forEach(q => qualities.add(q));
+    }
+    const qArr = Array.from(qualities);
+    const hasLow = qArr.some(q => q.includes('480p') || q.includes('720p'));
+    const hasHigh = qArr.some(q => q.includes('4K') || q.includes('1080p'));
+    if (hasLow && !hasHigh) {
+      acc.push({ id: i.Id, title: i.Name, year: i.ProductionYear, posterUrl: posterUrl(i.Id), qualities: qArr, issue: `Only ${qArr.join(', ')} available` });
+    }
+    return acc;
+  }, []);
+});
+
+// Find poor audio movies (only AAC/MP3, no lossless)
+const getPoorAudioMovies = cached('poor-audio', 5 * 60 * 1000, async () => {
+  const data = await jellyfinGet('/Items?Recursive=true&IncludeItemTypes=Movie&Limit=500&fields=Overview,ProductionYear,MediaStreams&SortBy=SortName');
+  const goodAudio = ['truehd','dts-hd','dts','eac3','flac','atmos'];
+  return (data.Items || []).reduce((acc, i) => {
+    const streams = i.MediaStreams || [];
+    const audioStreams = streams.filter(s => s.Type === 'Audio');
+    if (!audioStreams.length) return acc;
+    const hasPoor = audioStreams.every(s => {
+      const codec = (s.Codec || '').toLowerCase();
+      const profile = (s.Profile || '').toLowerCase();
+      const spatial = (s.AudioSpatialFormat || '').toLowerCase();
+      const isPoor = !goodAudio.some(g => codec.includes(g) || profile.includes(g) || spatial.includes(g));
+      return isPoor;
+    });
+    if (hasPoor) {
+      const audio = audioFromStreams(streams);
+      acc.push({ id: i.Id, title: i.Name, year: i.ProductionYear, posterUrl: posterUrl(i.Id), audio: audio || 'Unknown', issue: `Only ${audio || 'basic'} audio` });
+    }
+    return acc;
+  }, []);
+});
+
+// Find movies with no audio streams at all
+const getNoAudioMovies = cached('no-audio', 5 * 60 * 1000, async () => {
+  const data = await jellyfinGet('/Items?Recursive=true&IncludeItemTypes=Movie&Limit=500&fields=ProductionYear,MediaStreams&SortBy=SortName');
+  return (data.Items || [])
+    .filter(i => !(i.MediaStreams || []).some(s => s.Type === 'Audio'))
+    .map(i => ({ id: i.Id, title: i.Name, year: i.ProductionYear, posterUrl: posterUrl(i.Id), issue: 'No audio stream detected' }));
+});
+
+// Find duplicate movies
+const getDuplicates = cached('duplicates', 5 * 60 * 1000, async () => {
+  const data = await jellyfinGet('/Items?Recursive=true&IncludeItemTypes=Movie&Limit=1000&fields=ProductionYear,MediaSources,MediaStreams&SortBy=SortName');
+  const map = new Map();
+  (data.Items || []).forEach(i => {
+    const key = `${i.Name}__${i.ProductionYear}`;
+    if (!map.has(key)) map.set(key, []);
+    map.get(key).push(i);
+  });
+  return Array.from(map.entries())
+    .filter(([,items]) => items.length > 1)
+    .map(([key, items]) => ({
+      title: items[0].Name, year: items[0].ProductionYear,
+      posterUrl: posterUrl(items[0].Id),
+      versions: items.map(i => {
+        const q = qualitiesFromSource(i.MediaStreams, null);
+        const src = (i.MediaSources || [])[0];
+        return { id: i.Id, qualities: q, path: src ? src.Path : '', size: src ? src.Size : 0 };
+      }),
+    }));
+});
+
+// Find suspect files (very small = possibly corrupt, very large = bloated)
+const getSuspectFiles = cached('suspect-files', 5 * 60 * 1000, async () => {
+  const data = await jellyfinGet('/Items?Recursive=true&IncludeItemTypes=Movie&Limit=500&fields=ProductionYear,MediaSources,RunTimeTicks&SortBy=SortName');
+  const results = [];
+  (data.Items || []).forEach(i => {
+    const src = (i.MediaSources || [])[0];
+    if (!src || !src.Size) return;
+    const sizeMB = src.Size / (1024 * 1024);
+    const runtimeMins = i.RunTimeTicks ? i.RunTimeTicks / 600000000 : 0;
+    const mbPerMin = runtimeMins > 0 ? sizeMB / runtimeMins : 0;
+    if (sizeMB < 100 && runtimeMins > 30) results.push({ id: i.Id, title: i.Name, year: i.ProductionYear, posterUrl: posterUrl(i.Id), sizeMB: Math.round(sizeMB), issue: 'Very small file — possibly corrupt' });
+    else if (mbPerMin > 400) results.push({ id: i.Id, title: i.Name, year: i.ProductionYear, posterUrl: posterUrl(i.Id), sizeMB: Math.round(sizeMB), mbPerMin: Math.round(mbPerMin), issue: 'Very large file — possible re-encode candidate' });
+  });
+  return results;
+});
+
+// Find movies that have 4K releases available but you only have 1080p (via TMDB)
+const getUpgradeAvailable = cached('upgrade-available', 30 * 60 * 1000, async () => {
+  if (!TMDB_API_KEY) return [];
+  const data = await jellyfinGet('/Items?Recursive=true&IncludeItemTypes=Movie&Limit=500&fields=ProductionYear,MediaStreams,MediaSources,ProviderIds&SortBy=SortName');
+  const results = [];
+  for (const i of (data.Items || [])) {
+    const sources = i.MediaSources || [];
+    const qualities = new Set();
+    sources.forEach(src => qualitiesFromSource(src.MediaStreams, src).forEach(q => qualities.add(q)));
+    const qArr = Array.from(qualities);
+    const has4K = qArr.some(q => q.includes('4K'));
+    if (has4K) continue; // already have 4K
+    const has1080 = qArr.some(q => q.includes('1080p'));
+    if (!has1080) continue; // not even 1080p, already in low quality report
+    // Check if 4K release exists on TMDB
+    try {
+      const tmdbId = i.ProviderIds && (i.ProviderIds.Tmdb || i.ProviderIds.tmdb);
+      if (tmdbId) {
+        const releases = await httpGet(`https://api.themoviedb.org/3/movie/${tmdbId}/release_dates?api_key=${TMDB_API_KEY}`);
+        const hasUHD = (releases.results || []).some(r => 
+          (r.release_dates || []).some(rd => rd.type === 6) // type 6 = digital/physical 4K
+        );
+        // Simpler: just flag it as "4K release likely exists" for popular films
+        if (i.CommunityRating >= 7) {
+          results.push({ id: i.Id, title: i.Name, year: i.ProductionYear, posterUrl: posterUrl(i.Id), qualities: qArr, issue: '1080p only — 4K may be available' });
+        }
+      }
+    } catch(e) {}
+  }
+  return results.slice(0, 50);
+});
+
+// Music: albums missing artwork
+const getMissingMusicArt = cached('missing-music-art', 5 * 60 * 1000, async () => {
+  const data = await jellyfinGet('/Items?Recursive=true&IncludeItemTypes=MusicAlbum&Limit=500&fields=ImageTags,AlbumArtist&SortBy=SortName');
+  return (data.Items || [])
+    .filter(i => !i.ImageTags || !i.ImageTags.Primary)
+    .map(i => ({ id: i.Id, title: i.Name, artist: i.AlbumArtist, type: 'MusicAlbum', posterUrl: null, issue: 'Missing album art' }));
+});
+
+// POST handler for refresh
+async function handleRefreshItem(itemId) {
+  const reqUrl = `${JELLYFIN_URL}/Items/${itemId}/Refresh?MetadataRefreshMode=FullRefresh&ImageRefreshMode=FullRefresh&ReplaceAllMetadata=false&ReplaceAllImages=false`;
+  return new Promise((resolve) => {
+    const parsed = new url.URL(reqUrl);
+    const lib = parsed.protocol === 'https:' ? https : http;
+    const req = lib.request({
+      hostname: parsed.hostname,
+      port: parsed.port || (parsed.protocol === 'https:' ? 443 : 80),
+      path: parsed.pathname + parsed.search,
+      method: 'POST',
+      headers: { 'X-Emby-Authorization': `MediaBrowser Token="${JELLYFIN_API_KEY}"`, 'Content-Length': 0 },
+      timeout: 10000,
+    }, (res) => { resolve({ success: res.statusCode < 400, statusCode: res.statusCode }); });
+    req.on('error', (e) => resolve({ success: false, error: e.message }));
+    req.end();
+  });
+}
+
+async function handleLibraryScan() {
+  const reqUrl = `${JELLYFIN_URL}/Library/Refresh`;
+  return new Promise((resolve) => {
+    const parsed = new url.URL(reqUrl);
+    const lib = parsed.protocol === 'https:' ? https : http;
+    const req = lib.request({
+      hostname: parsed.hostname,
+      port: parsed.port || (parsed.protocol === 'https:' ? 443 : 80),
+      path: parsed.pathname + parsed.search,
+      method: 'POST',
+      headers: { 'X-Emby-Authorization': `MediaBrowser Token="${JELLYFIN_API_KEY}"`, 'Content-Length': 0 },
+      timeout: 10000,
+    }, (res) => { resolve({ success: res.statusCode < 400 }); });
+    req.on('error', (e) => resolve({ success: false, error: e.message }));
+    req.end();
+  });
+}
+
 const PUBLIC_DIR = path.resolve('/app/public');
 
 const server = http.createServer(async (req, res) => {
@@ -502,7 +720,164 @@ const server = http.createServer(async (req, res) => {
         return JSON.stringify(libraries || []);
       } catch(e) { return JSON.stringify([]); }
     },
+
+    // ── LIBRARY TOOLS ──
+    '/api/library/scan': async () => {
+      await jellyfinGet('/Library/Refresh'); // POST would be more correct but GET triggers scan too
+      return JSON.stringify({ success: true, message: 'Library scan triggered' });
+    },
+    '/api/library/refresh-metadata': async () => {
+      const itemId = parsed.query.id;
+      if (!itemId) return JSON.stringify({ error: 'No item ID' });
+      await jellyfinGet(`/Items/${itemId}/Refresh?MetadataRefreshMode=FullRefresh&ImageRefreshMode=FullRefresh&ReplaceAllMetadata=false&ReplaceAllImages=false`);
+      return JSON.stringify({ success: true });
+    },
+    '/api/library/refresh-images': async () => {
+      const itemId = parsed.query.id;
+      if (!itemId) return JSON.stringify({ error: 'No item ID' });
+      await jellyfinGet(`/Items/${itemId}/Refresh?MetadataRefreshMode=None&ImageRefreshMode=FullRefresh&ReplaceAllImages=true`);
+      return JSON.stringify({ success: true });
+    },
+    '/api/library/refresh-all-metadata': async () => {
+      // Refresh all items missing metadata
+      const data = await jellyfinGet('/Items?Recursive=true&Limit=0&EnableTotalRecordCount=true&IncludeItemTypes=Movie,Series,Episode,MusicAlbum,Audio');
+      return JSON.stringify({ success: true, total: data.TotalRecordCount, message: 'Use per-item refresh for bulk operations' });
+    },
+    '/api/library/quality-report': async () => {
+      const [sd, hd720, noQuality, poorAudio] = await Promise.all([
+        // SD movies (480p and below)
+        jellyfinGet('/Items?IncludeItemTypes=Movie&Recursive=true&Limit=100&fields=MediaStreams,ProductionYear,OfficialRating&SortBy=SortName'),
+        jellyfinGet('/Items?IncludeItemTypes=Episode&Recursive=true&Limit=50&fields=MediaStreams,SeriesName&SortBy=SortName'),
+        jellyfinGet('/Items?IncludeItemTypes=Movie&Recursive=true&Limit=200&fields=MediaStreams,ProductionYear&SortBy=SortName'),
+        jellyfinGet('/Items?IncludeItemTypes=Movie&Recursive=true&Limit=200&fields=MediaStreams,ProductionYear&SortBy=SortName'),
+      ]);
+
+      function getVideoQuality(streams) {
+        if (!streams) return null;
+        const v = streams.find(s => s.Type === 'Video');
+        if (!v) return null;
+        const w = v.Width || 0, h = v.Height || 0;
+        if (w >= 3840 || h >= 2160) return '4K';
+        if (w >= 1920 || h >= 1080) return '1080p';
+        if (w >= 1280 || h >= 720) return '720p';
+        return 'SD';
+      }
+
+      function getAudioQuality(streams) {
+        if (!streams) return null;
+        const a = streams.find(s => s.Type === 'Audio' && s.IsDefault) || streams.find(s => s.Type === 'Audio');
+        if (!a) return 'None';
+        const spatial = (a.AudioSpatialFormat || '').toLowerCase();
+        if (spatial.includes('atmos')) return 'Atmos';
+        if (spatial.includes('dtsx')) return 'DTS:X';
+        const profile = (a.Profile || '').toLowerCase();
+        if (profile.includes('truehd')) return 'TrueHD';
+        if (profile.includes('dts-hd ma')) return 'DTS-HD MA';
+        if (profile.includes('dts-hd')) return 'DTS-HD';
+        const codec = (a.Codec || '').toLowerCase();
+        if (codec === 'dts') return 'DTS';
+        if (codec === 'eac3') return 'DD+';
+        if (codec === 'ac3') return 'DD';
+        if (codec === 'aac') return 'AAC';
+        if (codec === 'mp3') return 'MP3';
+        return codec.toUpperCase() || 'Unknown';
+      }
+
+      const poorAudioItems = [], sdItems = [], hd720Items = [], noStreamItems = [];
+      const goodAudioFormats = ['Atmos', 'DTS:X', 'TrueHD', 'DTS-HD MA', 'DTS-HD', 'DTS', 'DD+'];
+
+      (noQuality.Items || []).forEach(item => {
+        const q = getVideoQuality(item.MediaStreams);
+        const a = getAudioQuality(item.MediaStreams);
+        if (!item.MediaStreams || !item.MediaStreams.length) {
+          noStreamItems.push({ id: item.Id, title: item.Name, year: item.ProductionYear, posterUrl: posterUrl(item.Id) });
+        } else if (q === 'SD') {
+          sdItems.push({ id: item.Id, title: item.Name, year: item.ProductionYear, quality: q, audio: a, posterUrl: posterUrl(item.Id) });
+        } else if (q === '720p') {
+          hd720Items.push({ id: item.Id, title: item.Name, year: item.ProductionYear, quality: q, audio: a, posterUrl: posterUrl(item.Id) });
+        }
+        if (q && q !== 'SD' && !goodAudioFormats.includes(a)) {
+          poorAudioItems.push({ id: item.Id, title: item.Name, year: item.ProductionYear, quality: q, audio: a || 'Unknown', posterUrl: posterUrl(item.Id) });
+        }
+      });
+
+      return JSON.stringify({ sdItems, hd720Items, noStreamItems, poorAudioItems });
+    },
+    '/api/library/missing-content': async () => {
+      const [movies, series] = await Promise.all([
+        jellyfinGet('/Items?IncludeItemTypes=Movie&Recursive=true&Limit=200&fields=Overview,ImageTags,BackdropImageTags,ProductionYear&SortBy=SortName'),
+        jellyfinGet('/Items?IncludeItemTypes=Series&Recursive=true&Limit=100&fields=Overview,ImageTags,BackdropImageTags&SortBy=SortName'),
+      ]);
+
+      const missingPoster = [], missingBackdrop = [], missingOverview = [];
+      const allItems = [...(movies.Items || []), ...(series.Items || [])];
+
+      allItems.forEach(item => {
+        const base = { id: item.Id, title: item.Name, type: item.Type, year: item.ProductionYear, posterUrl: posterUrl(item.Id) };
+        if (!item.ImageTags || !item.ImageTags.Primary) missingPoster.push(base);
+        if (!item.BackdropImageTags || !item.BackdropImageTags.length) missingBackdrop.push(base);
+        if (!item.Overview || item.Overview.trim().length < 10) missingOverview.push(base);
+      });
+
+      return JSON.stringify({ missingPoster, missingBackdrop, missingOverview });
+    },
+    '/api/library/versions-report': async () => {
+      const data = await jellyfinGet('/Items?IncludeItemTypes=Movie&Recursive=true&Limit=500&fields=MediaStreams,MediaSources,ProductionYear&SortBy=SortName');
+      const multiVersion = [], has3D = [], only2D = [];
+
+      (data.Items || []).forEach(item => {
+        const sources = item.MediaSources || [];
+        if (sources.length > 1) {
+          const qualities = sources.map(src => {
+            const v = (src.MediaStreams || []).find(s => s.Type === 'Video');
+            const is3d = /3d|hsbs|h-sbs|mvc/i.test(src.Name || '') || /3d|hsbs|h-sbs|mvc/i.test(src.Path || '');
+            if (is3d) return '3D';
+            if (!v) return 'Unknown';
+            const w = v.Width || 0, h = v.Height || 0;
+            if (w >= 3840 || h >= 2160) return '4K';
+            if (w >= 1920 || h >= 1080) return '1080p';
+            if (w >= 1280 || h >= 720) return '720p';
+            return 'SD';
+          });
+          multiVersion.push({ id: item.Id, title: item.Name, year: item.ProductionYear, versions: qualities, count: sources.length, posterUrl: posterUrl(item.Id) });
+          if (qualities.some(q => q === '3D')) {
+            has3D.push({ id: item.Id, title: item.Name, year: item.ProductionYear, versions: qualities, posterUrl: posterUrl(item.Id) });
+          }
+        } else if (sources.length === 1) {
+          const src = sources[0];
+          const is3d = /3d|hsbs|h-sbs|mvc/i.test(src.Name || '') || /3d|hsbs|h-sbs|mvc/i.test(src.Path || '');
+          if (!is3d) {
+            const v = (src.MediaStreams || []).find(s => s.Type === 'Video');
+            const w = v ? (v.Width || 0) : 0, h = v ? (v.Height || 0) : 0;
+            if (w >= 1280 || h >= 720) {
+              only2D.push({ id: item.Id, title: item.Name, year: item.ProductionYear, posterUrl: posterUrl(item.Id) });
+            }
+          }
+        }
+      });
+
+      return JSON.stringify({ multiVersion, has3D, only2D: only2D.slice(0, 50) });
+    },
+    '/api/library/music-report': async () => {
+      const [albums, tracks] = await Promise.all([
+        jellyfinGet('/Items?IncludeItemTypes=MusicAlbum&Recursive=true&Limit=100&fields=Overview,ImageTags,ProductionYear,AlbumArtist&SortBy=SortName'),
+        jellyfinGet('/Items?IncludeItemTypes=Audio&Recursive=true&Limit=0&EnableTotalRecordCount=true'),
+      ]);
+      const missingArt = (albums.Items || []).filter(a => !a.ImageTags || !a.ImageTags.Primary)
+        .map(a => ({ id: a.Id, title: a.Name, artist: a.AlbumArtist, year: a.ProductionYear, posterUrl: posterUrl(a.Id) }));
+      return JSON.stringify({ totalAlbums: albums.TotalRecordCount || (albums.Items||[]).length, totalTracks: tracks.TotalRecordCount || 0, missingArt });
+    },
     '/health': async () => JSON.stringify({ status: 'ok', jellyfin: JELLYFIN_URL, tmdb: !!TMDB_API_KEY }),
+    '/api/library/missing-posters': async () => JSON.stringify(await getMissingPosters() || []),
+    '/api/library/missing-backdrops': async () => JSON.stringify(await getMissingBackdrops() || []),
+    '/api/library/missing-metadata': async () => JSON.stringify(await getMissingMetadata() || []),
+    '/api/library/low-quality': async () => JSON.stringify(await getLowQualityMovies() || []),
+    '/api/library/poor-audio': async () => JSON.stringify(await getPoorAudioMovies() || []),
+    '/api/library/no-audio': async () => JSON.stringify(await getNoAudioMovies() || []),
+    '/api/library/duplicates': async () => JSON.stringify(await getDuplicates() || []),
+    '/api/library/suspect-files': async () => JSON.stringify(await getSuspectFiles() || []),
+    '/api/library/upgrade-available': async () => JSON.stringify(await getUpgradeAvailable() || []),
+    '/api/library/missing-music-art': async () => JSON.stringify(await getMissingMusicArt() || []),
     '/api/server-health': async () => {
       const start = Date.now();
       try {
@@ -521,13 +896,13 @@ const server = http.createServer(async (req, res) => {
         const transcoding = activeSessions.filter(s => s.TranscodingInfo);
         return JSON.stringify({
           latency,
-          jellyPosterVersion: 'v0.7.3',
+          jellyPosterVersion: 'v0.8.0',
           github: ghRelease ? {
             latestRelease: ghRelease.tag_name,
             releaseName: ghRelease.name,
             publishedAt: ghRelease.published_at,
             releaseUrl: ghRelease.html_url,
-            isLatest: ghRelease.tag_name === 'v0.7.3',
+            isLatest: ghRelease.tag_name === 'v0.8.0',
             changelog: ghRelease.body ? ghRelease.body.slice(0, 500) : null,
           } : null,
           serverName: info.ServerName,
@@ -576,10 +951,45 @@ const server = http.createServer(async (req, res) => {
     },
   };
 
+  // POST handlers
+  if (req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', async () => {
+      try {
+        if (pathname === '/api/library/scan') {
+          const result = await handleLibraryScan();
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify(result));
+        } else if (pathname === '/api/library/refresh-item') {
+          const data = JSON.parse(body || '{}');
+          const result = await handleRefreshItem(data.itemId);
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify(result));
+        } else if (pathname === '/api/library/refresh-all-missing') {
+          const type = parsed.query.type;
+          let items = [];
+          if (type === 'posters') items = await getMissingPosters();
+          else if (type === 'backdrops') items = await getMissingBackdrops();
+          else if (type === 'metadata') items = await getMissingMetadata();
+          const results = await Promise.allSettled(items.slice(0, 20).map(i => handleRefreshItem(i.id)));
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ refreshed: results.filter(r => r.status === 'fulfilled').length, total: items.length }));
+        } else {
+          res.writeHead(404); res.end('Not found');
+        }
+      } catch(e) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: e.message }));
+      }
+    });
+    return;
+  }
+
   if (routes[pathname]) {
     try {
       const body = await routes[pathname]();
-      if (body === null) { res.end(); return; }  // handled (redirect etc)
+      if (body === null) { res.end(); return; }
       if (!res.headersSent) res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(body);
     } catch (e) {

@@ -83,6 +83,70 @@
     .d-actor-photo{width:56px;height:56px;border-radius:50%;object-fit:cover;border:1px solid rgba(255,255,255,0.08);background:#1a1510;flex-shrink:0;}
     .d-actor-ph{width:56px;height:56px;border-radius:50%;background:#1a1510;border:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;font-size:18px;color:rgba(240,232,213,0.15);}
     .d-actor-name{font-family:'Cormorant Garamond',serif;font-size:10px;color:var(--cream);opacity:0.4;text-align:center;line-height:1.2;word-break:break-word;}
+
+    #tools-btn{position:fixed;bottom:22px;right:154px;z-index:60;width:34px;height:34px;border-radius:50%;background:rgba(10,8,4,0.8);border:1px solid rgba(201,168,76,0.18);color:var(--accent);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 0.4s ease;backdrop-filter:blur(10px);}
+    #tools-btn.visible{opacity:0.45;}
+    #tools-btn.visible:hover{opacity:1;}
+    #tools-overlay{position:fixed;inset:0;z-index:37;background:rgba(5,4,2,0.98);opacity:0;pointer-events:none;transition:opacity 0.3s ease;display:flex;flex-direction:column;overflow:hidden;}
+    #tools-overlay.open{opacity:1;pointer-events:all;}
+    #tools-header{display:flex;align-items:center;gap:14px;padding:22px 44px 16px;border-bottom:1px solid rgba(201,168,76,0.06);flex-shrink:0;}
+    #tools-back{font-size:8px;letter-spacing:0.25em;text-transform:uppercase;color:var(--accent);opacity:0.5;cursor:pointer;background:none;border:1px solid rgba(201,168,76,0.2);border-radius:4px;padding:5px 11px;transition:opacity 0.2s;}
+    #tools-back:hover{opacity:1;}
+    #tools-title{font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:0.4em;color:var(--cream);opacity:0.35;flex:1;}
+    #tools-body{flex:1;overflow-y:auto;display:flex;gap:0;}
+    #tools-sidebar{width:200px;flex-shrink:0;border-right:1px solid rgba(255,255,255,0.04);padding:16px 0;}
+    .tools-nav-item{padding:10px 20px;font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:var(--cream);opacity:0.35;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;gap:8px;}
+    .tools-nav-item:hover{opacity:0.7;background:rgba(255,255,255,0.03);}
+    .tools-nav-item.active{opacity:1;color:var(--accent);background:rgba(201,168,76,0.06);border-right:2px solid var(--accent);}
+    .tools-nav-badge{background:rgba(201,168,76,0.15);color:var(--accent);font-size:8px;padding:1px 5px;border-radius:10px;font-weight:700;}
+    #tools-content{flex:1;padding:24px 36px;overflow-y:auto;}
+    .tools-section{display:none;}
+    .tools-section.active{display:block;}
+    .tools-section-title{font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:0.4em;color:var(--accent);opacity:0.6;margin-bottom:6px;}
+    .tools-section-sub{font-size:10px;color:var(--cream);opacity:0.3;margin-bottom:20px;letter-spacing:0.05em;}
+
+    /* Quick actions */
+    .quick-actions{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:28px;}
+    .qa-btn{padding:10px 18px;border-radius:6px;border:1px solid rgba(201,168,76,0.2);background:rgba(201,168,76,0.06);color:var(--accent);font-size:9px;letter-spacing:0.2em;text-transform:uppercase;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;gap:8px;}
+    .qa-btn:hover{background:rgba(201,168,76,0.12);border-color:rgba(201,168,76,0.4);}
+    .qa-btn:disabled{opacity:0.3;cursor:default;}
+    .qa-btn.running{border-color:rgba(52,152,219,0.4);color:#5dade2;background:rgba(52,152,219,0.06);animation:qa-pulse 1.5s ease-in-out infinite;}
+    .qa-btn.done{border-color:rgba(46,204,113,0.4);color:#2ecc71;background:rgba(46,204,113,0.06);}
+    @keyframes qa-pulse{0%,100%{opacity:1}50%{opacity:0.6}}
+    #tools-status{font-size:11px;color:var(--cream);opacity:0.35;margin-bottom:20px;font-family:'Cormorant Garamond',serif;font-style:italic;min-height:18px;}
+
+    /* Report cards */
+    .report-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;margin-bottom:24px;}
+    .report-card{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:16px 18px;}
+    .report-card-title{font-size:8px;font-weight:700;letter-spacing:0.3em;text-transform:uppercase;color:var(--accent);opacity:0.5;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;}
+    .report-card-count{font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--cream);opacity:0.7;line-height:1;margin-bottom:4px;}
+    .report-card-count.warn{color:#f39c12;}
+    .report-card-count.bad{color:#e74c3c;}
+    .report-card-count.good{color:#2ecc71;}
+    .report-card-desc{font-size:10px;color:var(--cream);opacity:0.3;}
+
+    /* Item lists */
+    .tools-list{display:flex;flex-direction:column;gap:6px;margin-top:14px;}
+    .tools-item{display:flex;align-items:center;gap:12px;padding:8px 12px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:5px;transition:border-color 0.2s;}
+    .tools-item:hover{border-color:rgba(201,168,76,0.15);}
+    .tools-item-poster{width:32px;height:48px;object-fit:cover;border-radius:2px;flex-shrink:0;background:#1a1510;}
+    .tools-item-info{flex:1;min-width:0;}
+    .tools-item-title{font-size:11px;font-weight:700;color:var(--cream);opacity:0.65;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .tools-item-meta{font-size:9px;color:var(--cream);opacity:0.3;margin-top:2px;}
+    .tools-item-badge{font-size:7px;font-weight:700;letter-spacing:0.1em;padding:2px 7px;border-radius:2px;flex-shrink:0;}
+    .badge-bad{background:rgba(231,76,60,0.15);color:#e74c3c;border:1px solid rgba(231,76,60,0.2);}
+    .badge-warn{background:rgba(243,156,18,0.15);color:#f39c12;border:1px solid rgba(243,156,18,0.2);}
+    .badge-good{background:rgba(46,204,113,0.15);color:#2ecc71;border:1px solid rgba(46,204,113,0.2);}
+    .badge-info{background:rgba(93,173,226,0.15);color:#5dade2;border:1px solid rgba(93,173,226,0.2);}
+    .tools-item-actions{display:flex;gap:5px;flex-shrink:0;}
+    .ti-btn{font-size:7px;letter-spacing:0.12em;text-transform:uppercase;padding:3px 8px;border-radius:3px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.03);color:rgba(240,232,213,0.35);cursor:pointer;transition:all 0.2s;white-space:nowrap;}
+    .ti-btn:hover{background:rgba(255,255,255,0.07);color:rgba(240,232,213,0.7);}
+    .ti-btn.done{border-color:rgba(46,204,113,0.3);color:#2ecc71;}
+
+    .tools-empty{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:14px;color:var(--cream);opacity:0.2;padding:20px 0;text-align:center;}
+    .tools-loading{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:14px;color:var(--cream);opacity:0.2;padding:20px 0;}
+    .tools-subsection{margin-bottom:28px;}
+    .tools-subsection-title{font-size:9px;font-weight:700;letter-spacing:0.25em;text-transform:uppercase;color:var(--cream);opacity:0.28;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,0.04);}
     #health-btn{position:fixed;bottom:22px;left:22px;z-index:60;width:34px;height:34px;border-radius:50%;background:rgba(10,8,4,0.8);border:1px solid rgba(201,168,76,0.18);color:var(--accent);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 0.4s ease;backdrop-filter:blur(10px);}
     #health-btn.visible{opacity:0.45;}
     #health-btn.visible:hover{opacity:1;}
@@ -128,6 +192,60 @@
     .so-handle{font-size:14px;color:rgba(240,232,213,0.2);}
     .so-label{font-size:11px;color:var(--cream);opacity:0.55;flex:1;}
     .so-close{margin-top:14px;width:100%;padding:8px;border-radius:5px;border:1px solid rgba(255,255,255,0.07);background:rgba(255,255,255,0.03);color:rgba(240,232,213,0.32);font-size:8px;letter-spacing:0.2em;text-transform:uppercase;cursor:pointer;}
+    /* ── Library Tools ── */
+    #lib-btn{position:fixed;bottom:22px;right:154px;z-index:60;width:34px;height:34px;border-radius:50%;background:rgba(10,8,4,0.8);border:1px solid rgba(201,168,76,0.18);color:var(--accent);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 0.4s ease;backdrop-filter:blur(10px);}
+    #lib-btn.visible{opacity:0.45;}
+    #lib-btn.visible:hover{opacity:1;}
+    #lib-overlay{position:fixed;inset:0;z-index:37;background:rgba(5,4,2,0.98);opacity:0;pointer-events:none;transition:opacity 0.3s ease;display:flex;flex-direction:column;}
+    #lib-overlay.open{opacity:1;pointer-events:all;}
+    #lib-header{display:flex;align-items:center;gap:14px;padding:22px 44px 16px;border-bottom:1px solid rgba(201,168,76,0.06);flex-shrink:0;}
+    #lib-back{font-size:8px;letter-spacing:0.25em;text-transform:uppercase;color:var(--accent);opacity:0.5;cursor:pointer;background:none;border:1px solid rgba(201,168,76,0.2);border-radius:4px;padding:5px 11px;transition:opacity 0.2s;}
+    #lib-back:hover{opacity:1;}
+    #lib-title{font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:0.4em;color:var(--cream);opacity:0.35;flex:1;}
+    #lib-scan-btn{padding:6px 14px;border:1px solid rgba(201,168,76,0.3);border-radius:4px;background:rgba(201,168,76,0.08);color:var(--accent);font-size:8px;letter-spacing:0.25em;text-transform:uppercase;cursor:pointer;transition:all 0.2s;font-family:'Montserrat',sans-serif;}
+    #lib-scan-btn:hover{background:rgba(201,168,76,0.15);}
+    #lib-scan-btn.scanning{opacity:0.5;pointer-events:none;}
+    #lib-body{display:flex;flex:1;overflow:hidden;}
+    #lib-nav{width:200px;flex-shrink:0;border-right:1px solid rgba(255,255,255,0.04);padding:16px 0;overflow-y:auto;}
+    .lib-nav-item{display:flex;align-items:center;gap:10px;padding:9px 20px;cursor:pointer;transition:background 0.2s;font-size:10px;color:rgba(240,232,213,0.4);letter-spacing:0.08em;}
+    .lib-nav-item:hover{background:rgba(255,255,255,0.03);color:rgba(240,232,213,0.6);}
+    .lib-nav-item.active{background:rgba(201,168,76,0.06);color:var(--accent);}
+    .lib-nav-icon{font-size:14px;width:20px;text-align:center;flex-shrink:0;}
+    .lib-nav-badge{margin-left:auto;font-size:8px;background:rgba(192,57,43,0.7);color:#fff;padding:1px 5px;border-radius:8px;font-weight:700;}
+    #lib-content{flex:1;overflow-y:auto;padding:20px 32px;}
+    .lib-section-title{font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:0.4em;color:var(--cream);opacity:0.4;margin-bottom:6px;}
+    .lib-section-desc{font-size:10px;color:rgba(240,232,213,0.25);letter-spacing:0.08em;margin-bottom:18px;}
+    .lib-action-bar{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;}
+    .lib-btn{padding:7px 14px;border-radius:4px;font-size:8px;letter-spacing:0.2em;text-transform:uppercase;cursor:pointer;transition:all 0.2s;font-family:'Montserrat',sans-serif;border:none;}
+    .lib-btn-primary{background:rgba(201,168,76,0.15);color:var(--accent);border:1px solid rgba(201,168,76,0.3);}
+    .lib-btn-primary:hover{background:rgba(201,168,76,0.25);}
+    .lib-btn-danger{background:rgba(192,57,43,0.1);color:#e74c3c;border:1px solid rgba(192,57,43,0.25);}
+    .lib-btn-danger:hover{background:rgba(192,57,43,0.2);}
+    .lib-btn:disabled{opacity:0.35;pointer-events:none;}
+    .lib-loading{display:flex;align-items:center;gap:10px;color:rgba(240,232,213,0.2);font-size:12px;font-style:italic;font-family:'Cormorant Garamond',serif;padding:20px 0;}
+    .lib-empty{color:rgba(46,204,113,0.6);font-size:12px;padding:20px 0;font-style:italic;font-family:'Cormorant Garamond',serif;}
+    .lib-results-count{font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:rgba(240,232,213,0.2);margin-bottom:14px;}
+    .lib-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:6px;border:1px solid rgba(255,255,255,0.05);background:rgba(255,255,255,0.02);margin-bottom:8px;transition:background 0.2s;}
+    .lib-item:hover{background:rgba(255,255,255,0.04);}
+    .lib-item-poster{width:36px;height:54px;object-fit:cover;border-radius:3px;flex-shrink:0;background:#1a1510;}
+    .lib-item-poster-ph{width:36px;height:54px;border-radius:3px;background:#1a1510;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:8px;color:#2a2015;}
+    .lib-item-info{flex:1;min-width:0;}
+    .lib-item-title{font-size:12px;font-weight:700;color:rgba(240,232,213,0.7);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .lib-item-meta{font-size:9px;color:rgba(240,232,213,0.28);margin-top:2px;letter-spacing:0.05em;}
+    .lib-item-issue{font-size:9px;color:#f39c12;margin-top:3px;letter-spacing:0.05em;}
+    .lib-item-actions{display:flex;gap:6px;flex-shrink:0;}
+    .lib-item-btn{padding:4px 10px;border-radius:3px;font-size:7px;letter-spacing:0.15em;text-transform:uppercase;cursor:pointer;transition:all 0.2s;font-family:'Montserrat',sans-serif;}
+    .lib-item-btn-fix{background:rgba(201,168,76,0.12);color:var(--accent);border:1px solid rgba(201,168,76,0.25);}
+    .lib-item-btn-fix:hover{background:rgba(201,168,76,0.22);}
+    .lib-item-btn-fix.done{background:rgba(46,204,113,0.1);color:#2ecc71;border-color:rgba(46,204,113,0.25);pointer-events:none;}
+    .lib-item-btn-fix.working{opacity:0.4;pointer-events:none;}
+    .lib-dup-group{margin-bottom:16px;border:1px solid rgba(255,255,255,0.06);border-radius:6px;overflow:hidden;}
+    .lib-dup-header{padding:10px 14px;background:rgba(255,255,255,0.03);display:flex;align-items:center;gap:10px;}
+    .lib-dup-title{font-size:12px;font-weight:700;color:rgba(240,232,213,0.65);}
+    .lib-dup-version{padding:8px 14px;border-top:1px solid rgba(255,255,255,0.04);display:flex;align-items:center;gap:10px;font-size:10px;color:rgba(240,232,213,0.35);}
+    .lib-dup-path{font-size:8px;color:rgba(240,232,213,0.2);font-family:monospace;word-break:break-all;margin-top:2px;}
+    .lib-progress{height:3px;background:rgba(255,255,255,0.06);border-radius:2px;margin-top:12px;margin-bottom:4px;overflow:hidden;}
+    .lib-progress-fill{height:100%;background:var(--accent);border-radius:2px;transition:width 0.3s ease;}
     /* Quality badges */
     .quality-badges{position:absolute;top:5px;left:5px;display:flex;flex-direction:column;gap:2px;pointer-events:none;}
     .qbadge{font-size:6px;font-weight:800;letter-spacing:0.1em;padding:2px 5px;border-radius:2px;line-height:1.2;text-transform:uppercase;}
@@ -456,7 +574,41 @@
 
 
 
+
+  <!-- Library Tools -->
+  <div id="lib-overlay">
+    <div id="lib-header">
+      <button id="lib-back">← Back</button>
+      <div id="lib-title">Library Tools</div>
+      <button id="lib-scan-btn">↻ Scan Library</button>
+    </div>
+    <div id="lib-body">
+      <div id="lib-nav">
+        <div class="lib-nav-item active" data-section="overview"><span class="lib-nav-icon">📊</span>Overview</div>
+        <div class="lib-nav-item" data-section="missing-posters"><span class="lib-nav-icon">🖼</span>Missing Posters</div>
+        <div class="lib-nav-item" data-section="missing-backdrops"><span class="lib-nav-icon">🎨</span>Missing Backdrops</div>
+        <div class="lib-nav-item" data-section="missing-metadata"><span class="lib-nav-icon">📝</span>Missing Metadata</div>
+        <div class="lib-nav-item" data-section="low-quality"><span class="lib-nav-icon">📉</span>Low Quality</div>
+        <div class="lib-nav-item" data-section="poor-audio"><span class="lib-nav-icon">🔊</span>Poor Audio</div>
+        <div class="lib-nav-item" data-section="no-audio"><span class="lib-nav-icon">🔇</span>No Audio</div>
+        <div class="lib-nav-item" data-section="duplicates"><span class="lib-nav-icon">📋</span>Duplicates</div>
+        <div class="lib-nav-item" data-section="suspect-files"><span class="lib-nav-icon">⚠️</span>Suspect Files</div>
+        <div class="lib-nav-item" data-section="upgrade-available"><span class="lib-nav-icon">⬆️</span>4K Upgrades</div>
+        <div class="lib-nav-item" data-section="missing-music-art"><span class="lib-nav-icon">🎵</span>Music Art</div>
+      </div>
+      <div id="lib-content">
+        <div id="lib-overview-section">
+          <div class="lib-section-title">Library Overview</div>
+          <div class="lib-section-desc">Click a section in the left panel to scan for issues. Use "Scan Library" to trigger a full Jellyfin rescan.</div>
+          <div id="lib-overview-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-top:16px;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <button id="tools-btn">🔧</button>
   <!-- Health page -->
+  <button id="lib-btn">🔧</button>
   <button id="health-btn">📡</button>
   <div id="health-overlay">
     <div id="health-header">
@@ -474,6 +626,120 @@
       <div class="so-title">Reorder Sections</div>
       <div id="so-list"></div>
       <button class="so-close" id="so-close">Done</button>
+    </div>
+  </div>
+
+
+  <!-- Library Tools -->
+  <div id="tools-overlay">
+    <div id="tools-header">
+      <button id="tools-back">← Back</button>
+      <div id="tools-title">Library Tools</div>
+      <div id="tools-status"></div>
+    </div>
+    <div id="tools-body">
+      <div id="tools-sidebar">
+        <div class="tools-nav-item active" data-section="overview">📊 Overview</div>
+        <div class="tools-nav-item" data-section="quality">🎬 Quality Issues</div>
+        <div class="tools-nav-item" data-section="missing">❌ Missing Content</div>
+        <div class="tools-nav-item" data-section="versions">📀 Versions & 3D</div>
+        <div class="tools-nav-item" data-section="music">🎵 Music</div>
+        <div class="tools-nav-item" data-section="actions">⚡ Quick Actions</div>
+      </div>
+      <div id="tools-content">
+
+        <!-- OVERVIEW -->
+        <div class="tools-section active" id="ts-overview">
+          <div class="tools-section-title">Library Overview</div>
+          <div class="tools-section-sub">Summary of your library health</div>
+          <div class="report-grid" id="tools-overview-grid">
+            <div class="tools-loading">Loading library data...</div>
+          </div>
+        </div>
+
+        <!-- QUALITY -->
+        <div class="tools-section" id="ts-quality">
+          <div class="tools-section-title">Quality Issues</div>
+          <div class="tools-section-sub">Movies and shows with poor video or audio quality</div>
+          <div class="tools-subsection">
+            <div class="tools-subsection-title">SD / 480p Movies <span id="sd-count" class="tools-nav-badge"></span></div>
+            <div class="tools-list" id="tools-sd-list"><div class="tools-loading">Run scan to see results</div></div>
+          </div>
+          <div class="tools-subsection">
+            <div class="tools-subsection-title">720p Movies (upgrade candidates) <span id="hd720-count" class="tools-nav-badge"></span></div>
+            <div class="tools-list" id="tools-720-list"><div class="tools-loading">Run scan to see results</div></div>
+          </div>
+          <div class="tools-subsection">
+            <div class="tools-subsection-title">Poor Audio (no surround) <span id="audio-count" class="tools-nav-badge"></span></div>
+            <div class="tools-list" id="tools-audio-list"><div class="tools-loading">Run scan to see results</div></div>
+          </div>
+          <div class="tools-subsection">
+            <div class="tools-subsection-title">No Media Streams Detected <span id="nostream-count" class="tools-nav-badge"></span></div>
+            <div class="tools-list" id="tools-nostream-list"><div class="tools-loading">Run scan to see results</div></div>
+          </div>
+        </div>
+
+        <!-- MISSING -->
+        <div class="tools-section" id="ts-missing">
+          <div class="tools-section-title">Missing Content</div>
+          <div class="tools-section-sub">Items with missing images or metadata</div>
+          <div class="tools-subsection">
+            <div class="tools-subsection-title">Missing Poster <span id="noposter-count" class="tools-nav-badge"></span></div>
+            <div class="tools-list" id="tools-noposter-list"><div class="tools-loading">Run scan to see results</div></div>
+          </div>
+          <div class="tools-subsection">
+            <div class="tools-subsection-title">Missing Backdrop <span id="nobackdrop-count" class="tools-nav-badge"></span></div>
+            <div class="tools-list" id="tools-nobackdrop-list"><div class="tools-loading">Run scan to see results</div></div>
+          </div>
+          <div class="tools-subsection">
+            <div class="tools-subsection-title">Missing Overview / Description <span id="nooverview-count" class="tools-nav-badge"></span></div>
+            <div class="tools-list" id="tools-nooverview-list"><div class="tools-loading">Run scan to see results</div></div>
+          </div>
+        </div>
+
+        <!-- VERSIONS & 3D -->
+        <div class="tools-section" id="ts-versions">
+          <div class="tools-section-title">Versions & 3D</div>
+          <div class="tools-section-sub">Multi-version movies and 3D library</div>
+          <div class="tools-subsection">
+            <div class="tools-subsection-title">Movies with Multiple Versions <span id="multiversion-count" class="tools-nav-badge"></span></div>
+            <div class="tools-list" id="tools-multiversion-list"><div class="tools-loading">Run scan to see results</div></div>
+          </div>
+          <div class="tools-subsection">
+            <div class="tools-subsection-title">3D Movies in Library <span id="has3d-count" class="tools-nav-badge"></span></div>
+            <div class="tools-list" id="tools-3d-list"><div class="tools-loading">Run scan to see results</div></div>
+          </div>
+          <div class="tools-subsection">
+            <div class="tools-subsection-title">Movies without 3D version (2D only sample) <span id="only2d-count" class="tools-nav-badge"></span></div>
+            <div class="tools-list" id="tools-2d-list"><div class="tools-loading">Run scan to see results</div></div>
+          </div>
+        </div>
+
+        <!-- MUSIC -->
+        <div class="tools-section" id="ts-music">
+          <div class="tools-section-title">Music Library</div>
+          <div class="tools-section-sub">Music albums and tracks</div>
+          <div class="report-grid" id="tools-music-grid"><div class="tools-loading">Run scan to see results</div></div>
+          <div class="tools-subsection">
+            <div class="tools-subsection-title">Albums Missing Artwork <span id="noart-count" class="tools-nav-badge"></span></div>
+            <div class="tools-list" id="tools-noart-list"><div class="tools-loading">Run scan to see results</div></div>
+          </div>
+        </div>
+
+        <!-- ACTIONS -->
+        <div class="tools-section" id="ts-actions">
+          <div class="tools-section-title">Quick Actions</div>
+          <div class="tools-section-sub">Trigger Jellyfin maintenance tasks</div>
+          <div class="quick-actions">
+            <button class="qa-btn" id="qa-scan">🔍 Scan All Libraries</button>
+            <button class="qa-btn" id="qa-refresh-meta">📋 Refresh All Metadata</button>
+            <button class="qa-btn" id="qa-refresh-missing-images">🖼 Fix Missing Images</button>
+            <button class="qa-btn" id="qa-run-all">▶ Run Full Scan</button>
+          </div>
+          <div id="tools-action-log" style="font-family:monospace;font-size:10px;color:rgba(240,232,213,0.35);line-height:1.8;padding:14px;background:rgba(0,0,0,0.3);border-radius:6px;border:1px solid rgba(255,255,255,0.05);min-height:120px;"></div>
+        </div>
+
+      </div>
     </div>
   </div>
 
@@ -618,7 +884,7 @@
   // Settings panel
   const sBtn=document.getElementById('settings-btn'),sPanel=document.getElementById('settings-panel');
   let sBtnT;
-  function showSBtn(){['settings-btn','search-btn','browse-btn','health-btn'].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.add('visible');});clearTimeout(sBtnT);sBtnT=setTimeout(()=>{if(!sPanel.classList.contains('open')){['settings-btn','search-btn','browse-btn','health-btn'].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.remove('visible');});}},4000);}
+  function showSBtn(){['settings-btn','search-btn','browse-btn','health-btn','lib-btn'].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.add('visible');});clearTimeout(sBtnT);sBtnT=setTimeout(()=>{if(!sPanel.classList.contains('open')){['settings-btn','search-btn','browse-btn','health-btn','lib-btn'].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.remove('visible');});}},4000);}
   document.addEventListener('mousemove',showSBtn);document.addEventListener('touchstart',showSBtn);showSBtn();
   sBtn.addEventListener('click',()=>{sPanel.classList.toggle('open');sBtn.classList.add('visible');clearTimeout(sBtnT);playSound('click');});
   document.addEventListener('click',e=>{if(!sPanel.contains(e.target)&&e.target!==sBtn){sPanel.classList.remove('open');showSBtn();}});
@@ -873,7 +1139,7 @@
   function fmtDate(d){return d?new Date(d).toLocaleDateString([],{month:'short',day:'numeric',year:'numeric'}):''}
 
   // ════ POSTER CARDS ════
-  function qBadgeClass(q){if(q.startsWith('4K'))return'qbadge-4k';if(q.includes('1080'))return'qbadge-1080';if(q.includes('720'))return'qbadge-720';if(q==='3D'||q.includes('3D'))return'qbadge-3d';return'qbadge-480';}
+  function qBadgeClass(q){if(q.includes('3D'))return'qbadge-3d';if(q.startsWith('4K'))return'qbadge-4k';if(q.includes('1080'))return'qbadge-1080';if(q.includes('720'))return'qbadge-720';return'qbadge-480';}
   function mkQualityBadges(qualities,versionCount,audio){
     const hasContent=((qualities&&qualities.length)||(versionCount>1)||audio);
     if(!hasContent)return null;
@@ -1076,6 +1342,157 @@
   document.getElementById('bf-genre').addEventListener('change', e => { browseGenre = e.target.value; browseStart = 0; loadBrowse(false); });
 
 
+
+  // ════ LIBRARY TOOLS ════
+  const libOverlay = document.getElementById('lib-overlay');
+  let libCurrentSection = 'overview';
+  let libCache = {};
+
+  document.getElementById('lib-btn').addEventListener('click', () => { libOverlay.classList.add('open'); loadLibOverview(); playSound('open'); });
+  document.getElementById('lib-back').addEventListener('click', () => { libOverlay.classList.remove('open'); playSound('click'); });
+
+  document.getElementById('lib-scan-btn').addEventListener('click', async () => {
+    const btn = document.getElementById('lib-scan-btn');
+    btn.textContent = '↻ Scanning...'; btn.classList.add('scanning');
+    try {
+      const r = await fetch('/api/library/scan', { method: 'POST' });
+      const d = await r.json();
+      showToast('🔍 Library Scan', d.success ? 'Scan triggered successfully' : 'Scan failed', '', null);
+    } catch(e) { showToast('⚠️ Error', e.message, '', null); }
+    setTimeout(() => { btn.textContent = '↻ Scan Library'; btn.classList.remove('scanning'); }, 3000);
+  });
+
+  // Nav items
+  document.querySelectorAll('.lib-nav-item').forEach(item => {
+    item.addEventListener('click', () => {
+      document.querySelectorAll('.lib-nav-item').forEach(i => i.classList.remove('active'));
+      item.classList.add('active');
+      libCurrentSection = item.dataset.section;
+      loadLibSection(libCurrentSection);
+      playSound('click');
+    });
+  });
+
+  async function loadLibOverview() {
+    const grid = document.getElementById('lib-overview-grid');
+    grid.innerHTML = '<div class="lib-loading">⟳ Loading overview...</div>';
+    const sections = [
+      { key: 'missing-posters', label: 'Missing Posters', icon: '🖼', endpoint: '/api/library/missing-posters' },
+      { key: 'missing-backdrops', label: 'Missing Backdrops', icon: '🎨', endpoint: '/api/library/missing-backdrops' },
+      { key: 'missing-metadata', label: 'Missing Metadata', icon: '📝', endpoint: '/api/library/missing-metadata' },
+      { key: 'low-quality', label: 'Low Quality Files', icon: '📉', endpoint: '/api/library/low-quality' },
+      { key: 'poor-audio', label: 'Poor Audio', icon: '🔊', endpoint: '/api/library/poor-audio' },
+      { key: 'no-audio', label: 'No Audio Stream', icon: '🔇', endpoint: '/api/library/no-audio' },
+      { key: 'duplicates', label: 'Duplicates', icon: '📋', endpoint: '/api/library/duplicates' },
+      { key: 'suspect-files', label: 'Suspect Files', icon: '⚠️', endpoint: '/api/library/suspect-files' },
+    ];
+    grid.innerHTML = '';
+    await Promise.all(sections.map(async s => {
+      const card = document.createElement('div');
+      card.style.cssText = 'padding:14px 16px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:8px;cursor:pointer;transition:all 0.2s;';
+      card.innerHTML = `<div style="font-size:20px;margin-bottom:8px;">${s.icon}</div><div style="font-size:11px;font-weight:700;color:rgba(240,232,213,0.6);margin-bottom:6px;">${s.label}</div><div style="font-size:18px;font-family:'Bebas Neue',sans-serif;color:var(--accent);" id="overview-count-${s.key}">—</div>`;
+      card.addEventListener('click', () => {
+        document.querySelectorAll('.lib-nav-item').forEach(i => i.classList.remove('active'));
+        document.querySelector(`.lib-nav-item[data-section="${s.key}"]`).classList.add('active');
+        libCurrentSection = s.key;
+        loadLibSection(s.key);
+      });
+      card.addEventListener('mouseenter', () => card.style.background = 'rgba(255,255,255,0.06)');
+      card.addEventListener('mouseleave', () => card.style.background = 'rgba(255,255,255,0.03)');
+      grid.appendChild(card);
+      try {
+        const r = await fetch(s.endpoint); const items = await r.json();
+        const count = Array.isArray(items) ? items.length : (items.items ? items.items.length : 0);
+        const el = document.getElementById(`overview-count-${s.key}`);
+        if (el) { el.textContent = count; el.style.color = count > 0 ? '#e74c3c' : '#2ecc71'; }
+        const badge = document.querySelector(`.lib-nav-item[data-section="${s.key}"] .lib-nav-badge`);
+        if (!badge && count > 0) {
+          const b = document.createElement('span'); b.className = 'lib-nav-badge'; b.textContent = count;
+          document.querySelector(`.lib-nav-item[data-section="${s.key}"]`).appendChild(b);
+        }
+        libCache[s.key] = items;
+      } catch(e) {}
+    }));
+  }
+
+  async function loadLibSection(section) {
+    const content = document.getElementById('lib-content');
+    if (section === 'overview') { loadLibOverview(); return; }
+    content.innerHTML = '<div class="lib-loading">⟳ Scanning...</div>';
+    const configs = {
+      'missing-posters': { title: 'Missing Posters', desc: 'Movies and shows with no poster image. Refreshing metadata will attempt to download one from your metadata providers.', endpoint: '/api/library/missing-posters', fixType: 'posters', canRefreshAll: true },
+      'missing-backdrops': { title: 'Missing Backdrops', desc: 'Movies and shows with no backdrop/banner image.', endpoint: '/api/library/missing-backdrops', fixType: 'backdrops', canRefreshAll: true },
+      'missing-metadata': { title: 'Missing Metadata', desc: 'Items with no overview/description. Refreshing will re-pull from metadata providers.', endpoint: '/api/library/missing-metadata', fixType: 'metadata', canRefreshAll: true },
+      'low-quality': { title: 'Low Quality Files', desc: 'Movies only available in 480p or 720p. Consider finding higher quality versions.', endpoint: '/api/library/low-quality', canRefreshAll: false },
+      'poor-audio': { title: 'Poor Audio', desc: 'Movies with only basic audio (AAC/MP3). Consider sourcing versions with lossless audio.', endpoint: '/api/library/poor-audio', canRefreshAll: false },
+      'no-audio': { title: 'No Audio Detected', desc: 'Files with no detectable audio stream — may be corrupt or unrecognised format.', endpoint: '/api/library/no-audio', canRefreshAll: false },
+      'duplicates': { title: 'Duplicate Movies', desc: 'Movies that appear more than once in your library. Review and remove lower quality copies.', endpoint: '/api/library/duplicates', isDuplicates: true },
+      'suspect-files': { title: 'Suspect Files', desc: 'Very small files that may be corrupt, or very large files that may be bloated.', endpoint: '/api/library/suspect-files', canRefreshAll: false },
+      'upgrade-available': { title: '4K Upgrade Available', desc: 'Movies you have in 1080p where a 4K release likely exists. Requires TMDB API key.', endpoint: '/api/library/upgrade-available', canRefreshAll: false },
+      'missing-music-art': { title: 'Missing Music Artwork', desc: 'Albums with no cover art.', endpoint: '/api/library/missing-music-art', fixType: 'posters', canRefreshAll: true },
+    };
+    const cfg = configs[section];
+    if (!cfg) { content.innerHTML = '<div class="lib-empty">Section not found</div>'; return; }
+    try {
+      const items = libCache[section] || await (await fetch(cfg.endpoint)).json();
+      libCache[section] = items;
+      const list = cfg.isDuplicates ? items : items;
+      content.innerHTML = '';
+      const titleEl = document.createElement('div'); titleEl.className = 'lib-section-title'; titleEl.textContent = cfg.title; content.appendChild(titleEl);
+      const descEl = document.createElement('div'); descEl.className = 'lib-section-desc'; descEl.textContent = cfg.desc; content.appendChild(descEl);
+      if (cfg.canRefreshAll && list.length > 0) {
+        const bar = document.createElement('div'); bar.className = 'lib-action-bar';
+        const refreshAll = document.createElement('button'); refreshAll.className = 'lib-btn lib-btn-primary'; refreshAll.textContent = `↻ Refresh All ${list.length > 20 ? '(first 20)' : ''}`;
+        refreshAll.addEventListener('click', async () => {
+          refreshAll.disabled = true; refreshAll.textContent = 'Refreshing...';
+          const r = await fetch(`/api/library/refresh-all-missing?type=${cfg.fixType}`, { method: 'POST' });
+          const d = await r.json();
+          showToast('✅ Refreshed', `${d.refreshed} items refreshed`, '', null);
+          refreshAll.textContent = `✓ Done (${d.refreshed} refreshed)`;
+        });
+        bar.appendChild(refreshAll); content.appendChild(bar);
+      }
+      const countEl = document.createElement('div'); countEl.className = 'lib-results-count';
+      countEl.textContent = list.length === 0 ? '✓ All clear' : `${list.length} issue${list.length !== 1 ? 's' : ''} found`;
+      countEl.style.color = list.length === 0 ? '#2ecc71' : '#e74c3c';
+      content.appendChild(countEl);
+      if (list.length === 0) { const e = document.createElement('div'); e.className = 'lib-empty'; e.textContent = '✓ No issues found — looking good!'; content.appendChild(e); return; }
+      if (cfg.isDuplicates) {
+        list.forEach(group => {
+          const g = document.createElement('div'); g.className = 'lib-dup-group';
+          g.innerHTML = `<div class="lib-dup-header"><span style="font-size:16px;">📋</span><span class="lib-dup-title">${group.title} (${group.year||'?'})</span><span style="font-size:9px;color:rgba(240,232,213,0.25);margin-left:auto;">${group.versions.length} versions</span></div>`;
+          group.versions.forEach(v => {
+            const vEl = document.createElement('div'); vEl.className = 'lib-dup-version';
+            const sizeMB = v.size ? Math.round(v.size/(1024*1024)) : 0;
+            vEl.innerHTML = `<span>${v.qualities.join(', ')||'Unknown'}</span><span style="margin-left:auto;">${sizeMB ? sizeMB.toLocaleString()+' MB' : '—'}</span>`;
+            if (v.path) { const p = document.createElement('div'); p.className = 'lib-dup-path'; p.textContent = v.path; vEl.appendChild(p); }
+            g.appendChild(vEl);
+          });
+          content.appendChild(g);
+        });
+      } else {
+        list.forEach(item => {
+          const row = document.createElement('div'); row.className = 'lib-item';
+          const posterEl = item.posterUrl
+            ? `<img class="lib-item-poster" src="${item.posterUrl}" alt="" onerror="this.style.display='none'" />`
+            : `<div class="lib-item-poster-ph">?</div>`;
+          row.innerHTML = `${posterEl}<div class="lib-item-info"><div class="lib-item-title">${item.title||item.name||'Unknown'}</div><div class="lib-item-meta">${[item.year,item.type,item.audio,item.qualities?.join(', ')].filter(Boolean).join(' · ')}</div><div class="lib-item-issue">${item.issue||''}</div></div><div class="lib-item-actions"></div>`;
+          if (cfg.canRefreshAll || cfg.fixType) {
+            const btn = document.createElement('button'); btn.className = 'lib-item-btn lib-item-btn-fix'; btn.textContent = '↻ Refresh';
+            btn.addEventListener('click', async () => {
+              btn.classList.add('working'); btn.textContent = '...';
+              const r = await fetch('/api/library/refresh-item', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ itemId: item.id }) });
+              const d = await r.json();
+              btn.classList.remove('working'); btn.classList.add('done'); btn.textContent = '✓ Done';
+            });
+            row.querySelector('.lib-item-actions').appendChild(btn);
+          }
+          content.appendChild(row);
+        });
+      }
+    } catch(e) { content.innerHTML = `<div style="color:#e74c3c;padding:20px;font-size:12px;">${e.message}</div>`; }
+  }
+
   // ════ HEALTH PAGE ════
   const healthOverlay = document.getElementById('health-overlay');
   document.getElementById('health-btn').addEventListener('click', () => { healthOverlay.classList.add('open'); loadHealth(); playSound('open'); });
@@ -1097,7 +1514,7 @@
           <div class="h-card-title">Connection</div>
           ${hstat('Latency', d.latency+'ms', lc)}
           <div class="h-latency-bar"><div class="h-latency-fill" style="width:${lw}%;background:${lcol};"></div></div>
-          ${hstat('JellyPoster', d.jellyPosterVersion||'v0.7.3')}
+          ${hstat('JellyPoster', d.jellyPosterVersion||'v0.8.0')}
           ${d.github ? `
             ${hstat('Latest Release', d.github.latestRelease, d.github.isLatest ? 'good' : 'warn')}
             ${!d.github.isLatest ? `<div class="h-stat"><span class="h-stat-label">Update</span><a href="${d.github.releaseUrl}" target="_blank" style="font-size:10px;color:#f39c12;text-decoration:none;">↗ ${d.github.latestRelease} available</a></div>` : ''}
@@ -1246,6 +1663,181 @@
 
   // ════ FIX ACTOR PHOTOS — use Jellyfin people images ════
   // Jellyfin has actor images already! Use them directly.
+
+
+  // ════ LIBRARY TOOLS ════
+  const toolsOverlay = document.getElementById('tools-overlay');
+  document.getElementById('tools-btn').addEventListener('click', () => { toolsOverlay.classList.add('open'); runAllScans(); playSound('open'); });
+  document.getElementById('tools-back').addEventListener('click', () => { toolsOverlay.classList.remove('open'); playSound('click'); });
+
+  // Nav
+  document.querySelectorAll('.tools-nav-item').forEach(item => {
+    item.addEventListener('click', () => {
+      document.querySelectorAll('.tools-nav-item').forEach(n => n.classList.remove('active'));
+      document.querySelectorAll('.tools-section').forEach(s => s.classList.remove('active'));
+      item.classList.add('active');
+      document.getElementById('ts-' + item.dataset.section).classList.add('active');
+      playSound('click');
+    });
+  });
+
+  function toolsLog(msg) {
+    const log = document.getElementById('tools-action-log');
+    if (log) { log.innerHTML += `<div>${new Date().toLocaleTimeString()} — ${msg}</div>`; log.scrollTop = log.scrollHeight; }
+    const status = document.getElementById('tools-status');
+    if (status) status.textContent = msg;
+  }
+
+  function setBadge(id, count, warnAt) {
+    const el = document.getElementById(id);
+    if (el) { el.textContent = count; el.style.background = (warnAt && count >= warnAt) ? 'rgba(231,76,60,0.2)' : 'rgba(201,168,76,0.12)'; el.style.color = (warnAt && count >= warnAt) ? '#e74c3c' : 'var(--accent)'; }
+  }
+
+  function mkToolsItem(item, badge, badgeClass, actions) {
+    const el = document.createElement('div'); el.className = 'tools-item';
+    const img = document.createElement('img'); img.className = 'tools-item-poster';
+    img.src = item.posterUrl || ''; img.onerror = () => img.style.opacity = '0';
+    const info = document.createElement('div'); info.className = 'tools-item-info';
+    const title = document.createElement('div'); title.className = 'tools-item-title'; title.textContent = item.title || item.name || '';
+    const meta = document.createElement('div'); meta.className = 'tools-item-meta';
+    meta.textContent = [item.year, item.type, item.quality, item.audio, item.versions && item.versions.join(' · ')].filter(Boolean).join(' · ');
+    info.appendChild(title); info.appendChild(meta);
+    const b = document.createElement('div'); b.className = `tools-item-badge ${badgeClass}`; b.textContent = badge;
+    const acts = document.createElement('div'); acts.className = 'tools-item-actions';
+    (actions || []).forEach(([label, fn]) => {
+      const btn = document.createElement('button'); btn.className = 'ti-btn'; btn.textContent = label;
+      btn.addEventListener('click', async () => { btn.disabled = true; btn.textContent = '...'; await fn(item, btn); });
+      acts.appendChild(btn);
+    });
+    el.appendChild(img); el.appendChild(info); el.appendChild(b); el.appendChild(acts);
+    return el;
+  }
+
+  function renderList(containerId, items, badgeFn, badgeClassFn, actions, emptyMsg) {
+    const el = document.getElementById(containerId); if (!el) return;
+    el.innerHTML = '';
+    if (!items || !items.length) { el.innerHTML = `<div class="tools-empty">✓ ${emptyMsg || 'None found'}</div>`; return; }
+    items.slice(0, 30).forEach(item => el.appendChild(mkToolsItem(item, badgeFn(item), badgeClassFn(item), actions(item))));
+    if (items.length > 30) { const more = document.createElement('div'); more.className = 'tools-empty'; more.textContent = `+ ${items.length - 30} more`; el.appendChild(more); }
+  }
+
+  async function refreshMeta(item, btn) {
+    try {
+      await fetch(`/api/library/refresh-metadata?id=${item.id}`);
+      btn.textContent = '✓ Done'; btn.classList.add('done'); toolsLog(`Refreshed metadata: ${item.title}`);
+    } catch(e) { btn.textContent = 'Failed'; }
+  }
+  async function refreshImages(item, btn) {
+    try {
+      await fetch(`/api/library/refresh-images?id=${item.id}`);
+      btn.textContent = '✓ Done'; btn.classList.add('done'); toolsLog(`Refreshed images: ${item.title}`);
+    } catch(e) { btn.textContent = 'Failed'; }
+  }
+
+  async function runQualityScan() {
+    toolsLog('Scanning quality...');
+    try {
+      const r = await fetch('/api/library/quality-report'); const d = await r.json();
+      setBadge('sd-count', d.sdItems.length, 1);
+      setBadge('hd720-count', d.hd720Items.length, 1);
+      setBadge('audio-count', d.poorAudioItems.length, 1);
+      setBadge('nostream-count', d.noStreamItems.length, 1);
+      renderList('tools-sd-list', d.sdItems, i=>`${i.quality||'SD'} · ${i.audio||'?'}`, ()=>'badge-bad', i=>[['↻ Meta', refreshMeta],['🖼 Images', refreshImages]]);
+      renderList('tools-720-list', d.hd720Items, i=>i.audio||'?', ()=>'badge-warn', i=>[['↻ Meta', refreshMeta]]);
+      renderList('tools-audio-list', d.poorAudioItems, i=>i.audio||'Unknown', ()=>'badge-warn', i=>[['↻ Meta', refreshMeta]]);
+      renderList('tools-nostream-list', d.noStreamItems, ()=>'No Stream', ()=>'badge-bad', i=>[['↻ Meta', refreshMeta]]);
+      toolsLog(`Quality scan: ${d.sdItems.length} SD, ${d.hd720Items.length} 720p, ${d.poorAudioItems.length} poor audio`);
+      return d;
+    } catch(e) { toolsLog('Quality scan failed: ' + e.message); return {}; }
+  }
+
+  async function runMissingScan() {
+    toolsLog('Scanning for missing content...');
+    try {
+      const r = await fetch('/api/library/missing-content'); const d = await r.json();
+      setBadge('noposter-count', d.missingPoster.length, 1);
+      setBadge('nobackdrop-count', d.missingBackdrop.length, 1);
+      setBadge('nooverview-count', d.missingOverview.length, 1);
+      renderList('tools-noposter-list', d.missingPoster, ()=>'No Poster', ()=>'badge-bad', i=>[['🖼 Fix Images', refreshImages],['↻ Meta', refreshMeta]]);
+      renderList('tools-nobackdrop-list', d.missingBackdrop, ()=>'No Backdrop', ()=>'badge-warn', i=>[['🖼 Fix Images', refreshImages]]);
+      renderList('tools-nooverview-list', d.missingOverview, ()=>'No Overview', ()=>'badge-warn', i=>[['↻ Meta', refreshMeta]]);
+      toolsLog(`Missing: ${d.missingPoster.length} posters, ${d.missingBackdrop.length} backdrops, ${d.missingOverview.length} overviews`);
+      return d;
+    } catch(e) { toolsLog('Missing content scan failed: ' + e.message); return {}; }
+  }
+
+  async function runVersionsScan() {
+    toolsLog('Scanning versions & 3D...');
+    try {
+      const r = await fetch('/api/library/versions-report'); const d = await r.json();
+      setBadge('multiversion-count', d.multiVersion.length, 0);
+      setBadge('has3d-count', d.has3D.length, 0);
+      setBadge('only2d-count', d.only2D.length, 0);
+      renderList('tools-multiversion-list', d.multiVersion, i=>`${i.count} versions`, ()=>'badge-info', i=>[], 'No multi-version movies');
+      renderList('tools-3d-list', d.has3D, i=>i.versions.join(' · '), ()=>'badge-good', i=>[], 'No 3D movies found');
+      renderList('tools-2d-list', d.only2D, ()=>'2D only', ()=>'badge-warn', i=>[], 'All movies have 3D versions');
+      toolsLog(`Versions: ${d.multiVersion.length} multi-version, ${d.has3D.length} with 3D`);
+      return d;
+    } catch(e) { toolsLog('Versions scan failed: ' + e.message); return {}; }
+  }
+
+  async function runMusicScan() {
+    toolsLog('Scanning music library...');
+    try {
+      const r = await fetch('/api/library/music-report'); const d = await r.json();
+      setBadge('noart-count', d.missingArt.length, 1);
+      const grid = document.getElementById('tools-music-grid');
+      if (grid) grid.innerHTML = `
+        <div class="report-card"><div class="report-card-title">Albums</div><div class="report-card-count">${d.totalAlbums}</div><div class="report-card-desc">Total albums</div></div>
+        <div class="report-card"><div class="report-card-title">Tracks</div><div class="report-card-count">${d.totalTracks}</div><div class="report-card-desc">Total tracks</div></div>
+        <div class="report-card"><div class="report-card-title">Missing Art</div><div class="report-card-count ${d.missingArt.length > 0 ? 'warn' : 'good'}">${d.missingArt.length}</div><div class="report-card-desc">Albums without artwork</div></div>`;
+      renderList('tools-noart-list', d.missingArt, ()=>'No Art', ()=>'badge-warn', i=>[['🖼 Fix', refreshImages]]);
+      toolsLog(`Music: ${d.totalAlbums} albums, ${d.totalTracks} tracks, ${d.missingArt.length} missing art`);
+      return d;
+    } catch(e) { toolsLog('Music scan failed: ' + e.message); return {}; }
+  }
+
+  async function runAllScans() {
+    toolsLog('Starting full library scan...');
+    const [q, m, v, mu] = await Promise.all([runQualityScan(), runMissingScan(), runVersionsScan(), runMusicScan()]);
+    // Update overview
+    const grid = document.getElementById('tools-overview-grid');
+    if (grid) grid.innerHTML = `
+      <div class="report-card"><div class="report-card-title">SD Files</div><div class="report-card-count ${(q.sdItems||[]).length > 0 ? 'warn' : 'good'}">${(q.sdItems||[]).length}</div><div class="report-card-desc">Movies below 1080p</div></div>
+      <div class="report-card"><div class="report-card-title">720p Files</div><div class="report-card-count ${(q.hd720Items||[]).length > 0 ? 'warn' : 'good'}">${(q.hd720Items||[]).length}</div><div class="report-card-desc">Potential upgrade candidates</div></div>
+      <div class="report-card"><div class="report-card-title">Poor Audio</div><div class="report-card-count ${(q.poorAudioItems||[]).length > 0 ? 'warn' : 'good'}">${(q.poorAudioItems||[]).length}</div><div class="report-card-desc">No surround sound</div></div>
+      <div class="report-card"><div class="report-card-title">Missing Posters</div><div class="report-card-count ${(m.missingPoster||[]).length > 0 ? 'bad' : 'good'}">${(m.missingPoster||[]).length}</div><div class="report-card-desc">Items without poster image</div></div>
+      <div class="report-card"><div class="report-card-title">Missing Overview</div><div class="report-card-count ${(m.missingOverview||[]).length > 0 ? 'warn' : 'good'}">${(m.missingOverview||[]).length}</div><div class="report-card-desc">Items without description</div></div>
+      <div class="report-card"><div class="report-card-title">3D Movies</div><div class="report-card-count good">${(v.has3D||[]).length}</div><div class="report-card-desc">Movies with 3D version</div></div>
+      <div class="report-card"><div class="report-card-title">Multi-Version</div><div class="report-card-count">${(v.multiVersion||[]).length}</div><div class="report-card-desc">Movies with multiple files</div></div>
+      <div class="report-card"><div class="report-card-title">Music Albums</div><div class="report-card-count">${mu.totalAlbums||0}</div><div class="report-card-desc">${mu.totalTracks||0} total tracks</div></div>`;
+    toolsLog('Full scan complete!');
+  }
+
+  // Quick action buttons
+  document.getElementById('qa-scan').addEventListener('click', async function() {
+    this.classList.add('running'); this.textContent = '⏳ Scanning...';
+    try { await fetch('/api/library/scan'); toolsLog('Library scan triggered'); this.textContent = '✓ Scan Started'; this.classList.remove('running'); this.classList.add('done'); }
+    catch(e) { this.textContent = '✗ Failed'; this.classList.remove('running'); }
+  });
+  document.getElementById('qa-run-all').addEventListener('click', async function() {
+    this.classList.add('running'); this.textContent = '⏳ Running...';
+    await runAllScans();
+    this.textContent = '✓ Done'; this.classList.remove('running'); this.classList.add('done');
+  });
+  document.getElementById('qa-refresh-meta').addEventListener('click', async function() {
+    toolsLog('Use per-item refresh buttons in Quality/Missing sections');
+  });
+  document.getElementById('qa-refresh-missing-images').addEventListener('click', async function() {
+    this.classList.add('running'); this.textContent = '⏳ Working...';
+    const r = await fetch('/api/library/missing-content'); const d = await r.json();
+    let fixed = 0;
+    for (const item of (d.missingPoster || []).slice(0, 20)) {
+      await fetch(`/api/library/refresh-images?id=${item.id}`);
+      fixed++; toolsLog(`Fixed images: ${item.title}`);
+    }
+    this.textContent = `✓ Fixed ${fixed}`; this.classList.remove('running'); this.classList.add('done');
+  });
 
   // ════ POLL ════
   async function poll(){try{const r=await fetch('/api/now-playing');const d=await r.json();if(d){lastWasPlaying=true;showNowPlaying(d);}else{if(lastWasPlaying||!isIdle)showIdle();lastWasPlaying=false;}}catch(e){}}
