@@ -856,6 +856,10 @@ Return JSON with these fields (keep existing values if already good, improve if 
       await jellyfinGet(`/Items/${itemId}/Refresh?MetadataRefreshMode=None&ImageRefreshMode=FullRefresh&ReplaceAllImages=true`);
       return JSON.stringify({ success: true });
     },
+    '/api/library/refresh-all': async () => {
+      await jellyfinGet('/Library/Refresh');
+      return JSON.stringify({ success: true, message: 'Full library refresh triggered' });
+    },
     '/api/library/refresh-all-metadata': async () => {
       // Refresh all items missing metadata
       const data = await jellyfinGet('/Items?Recursive=true&Limit=0&EnableTotalRecordCount=true&IncludeItemTypes=Movie,Series,Episode,MusicAlbum,Audio');
