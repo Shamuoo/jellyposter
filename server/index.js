@@ -56,24 +56,63 @@ function jellyfinGet(endpoint) {
 function posterUrl(itemId) { return `${JELLYFIN_URL}/Items/${itemId}/Images/Primary?maxWidth=600&api_key=${JELLYFIN_API_KEY}`; }
 function backdropUrl(itemId) { return `${JELLYFIN_URL}/Items/${itemId}/Images/Backdrop/0?maxWidth=1920&api_key=${JELLYFIN_API_KEY}`; }
 
-// ── Quality label from media streams ──
-function qualityFromStreams(streams) {
+// ── Quality from video stream — uses WIDTH for widescreen films ──
+function qualityFromVideo(video) {
+  if (!video) return null;
+  const w = video.Width || 0;
+  const h = video.Height || 0;
+  // Use width as primary indicator (handles 2.40:1 crops where height < 2160)
+  if (w >= 3840 || h >= 2160) return '4K';
+  if (w >= 1920 || h >= 1080) return '1080p';
+  if (w >= 1280 || h >= 720) return '720p';
+  if (w >= 640 || h >= 480) return '480p';
+  return null;
+}
+
+// ── Quality label from media streams + sources ──
+function qualityFromStreams(streams, mediaSources) {
   if (!streams) return null;
   const video = streams.find(s => s.Type === 'Video');
-  if (!video) return null;
-  const h = video.Height || 0;
-  // Check for 3D via multiple Jellyfin fields
+  // 3D detection: Video3DFormat field, or HSBS/3D in filename/title
   const is3D = (
-    video.Video3DFormat ||
-    (video.DisplayTitle && /\b3d\b/i.test(video.DisplayTitle)) ||
-    (video.Title && /\b3d\b/i.test(video.Title)) ||
-    streams.some(s => s.DisplayTitle && /\b3d\b/i.test(s.DisplayTitle))
+    (video && video.Video3DFormat) ||
+    streams.some(s => s.Video3DFormat) ||
+    (mediaSources && mediaSources.some(src =>
+      /3d|hsbs|sbs|half.sbs|mvc/i.test(src.Name || '') ||
+      /3d|hsbs|sbs|half.sbs|mvc/i.test(src.Path || '')
+    ))
   );
   if (is3D) return '3D';
-  if (h >= 2160) return '4K';
-  if (h >= 1080) return '1080p';
-  if (h >= 720) return '720p';
-  if (h >= 480) return '480p';
+  return qualityFromVideo(video);
+}
+
+// ── Audio label — checks AudioSpatialFormat first ──
+function audioFromStreams(streams) {
+  if (!streams) return null;
+  // Find default English audio, fall back to any default, then first audio
+  const audio = 
+    streams.find(s => s.Type === 'Audio' && s.IsDefault && s.Language === 'eng') ||
+    streams.find(s => s.Type === 'Audio' && s.IsDefault) ||
+    streams.find(s => s.Type === 'Audio');
+  if (!audio) return null;
+  // AudioSpatialFormat is the most reliable field
+  const spatial = (audio.AudioSpatialFormat || '').toLowerCase();
+  if (spatial === 'dolbyatmos' || spatial.includes('atmos')) return 'Atmos';
+  if (spatial.includes('dtsx') || spatial.includes('dts:x')) return 'DTS:X';
+  const profile = (audio.Profile || '').toLowerCase();
+  const title = (audio.DisplayTitle || audio.Title || '').toLowerCase();
+  const codec = (audio.Codec || '').toLowerCase();
+  if (profile.includes('atmos') || title.includes('atmos')) return 'Atmos';
+  if (profile.includes('dts:x') || profile.includes('dtsx')) return 'DTS:X';
+  if (profile.includes('truehd') || title.includes('truehd')) return 'TrueHD';
+  if (profile.includes('dts-hd ma') || title.includes('dts-hd ma')) return 'DTS-HD MA';
+  if (profile.includes('dts-hd') || title.includes('dts-hd')) return 'DTS-HD';
+  if (codec === 'dts') return 'DTS';
+  if (codec === 'eac3') return 'DD+';
+  if (codec === 'ac3') return 'DD';
+  if (codec === 'aac') return 'AAC';
+  if (codec === 'flac') return 'FLAC';
+  if (codec === 'mp3') return 'MP3';
   return null;
 }
 
@@ -104,15 +143,30 @@ function deduplicateMovies(items) {
   return Array.from(map.values());
 }
 
-// ── Map Jellyfin item to standard shape with quality ──
+// ── Map Jellyfin item to standard shape with quality + audio ──
 function mapItem(i) {
-  const quality = qualityFromStreams(i.MediaStreams);
+  // Collect qualities from all media sources if available
+  let qualities = [];
+  if (i.MediaSources && i.MediaSources.length > 1) {
+    i.MediaSources.forEach(src => {
+      const q = qualityFromStreams(src.MediaStreams, [src]);
+      if (q && !qualities.includes(q)) qualities.push(q);
+    });
+    // Sort: 4K, 3D, 1080p, 720p, 480p
+    const order = ['4K','3D','1080p','720p','480p'];
+    qualities.sort((a,b) => order.indexOf(a) - order.indexOf(b));
+  } else {
+    const q = qualityFromStreams(i.MediaStreams, i.MediaSources);
+    if (q) qualities = [q];
+  }
+  const audio = audioFromStreams(i.MediaStreams);
   return {
     id: i.Id, title: i.Name, year: i.ProductionYear,
     genre: (i.Genres || []).slice(0, 2).join(' / '),
     rating: i.OfficialRating, score: i.CommunityRating,
     overview: i.Overview,
-    qualities: quality ? [quality] : [],
+    qualities,
+    audio: audio || null,
     cast: (i.People || []).filter(p => p.Type === 'Actor').slice(0, 5).map(p => p.Name),
     director: (i.People || []).find(p => p.Type === 'Director') ? (i.People || []).find(p => p.Type === 'Director').Name : null,
     posterUrl: posterUrl(i.Id), backdropUrl: backdropUrl(i.Id),
@@ -198,7 +252,7 @@ async function getNowPlaying() {
     full.posterUrl = posterUrl(item.Id);
     full.backdropUrl = backdropUrl(item.Id);
     full.RunTimeTicks = full.RunTimeTicks || item.RunTimeTicks;
-    const quality = qualityFromStreams(full.MediaStreams);
+    const quality = qualityFromStreams(full.MediaStreams, full.MediaSources);
     nowPlayingCache = {
       item: full,
       positionTicks: ps.PositionTicks || 0,
@@ -220,7 +274,7 @@ let newArrivals = [];
 const getRecentlyAdded = cached('recent', 60 * 1000, async () => {
   const userId = await getAdminUserId();
   if (!userId) throw new Error('No admin user ID');
-  const data = await jellyfinGet(`/Users/${userId}/Items/Latest?MediaType=Video&IncludeItemTypes=Movie&Limit=24&fields=Overview,Genres,ProductionYear,OfficialRating,CommunityRating,People,MediaStreams`);
+  const data = await jellyfinGet(`/Users/${userId}/Items/Latest?MediaType=Video&IncludeItemTypes=Movie&Limit=24&fields=Overview,Genres,ProductionYear,OfficialRating,CommunityRating,People,MediaStreams,MediaSources`);
   const items = (data || []).map(mapItem);
   const deduped = deduplicateMovies(items).slice(0, 12);
   if (lastRecentIds.size > 0) {
@@ -328,7 +382,7 @@ async function searchLibrary(query) {
 }
 
 async function getAllMovies(sortBy, sortOrder, genre, minYear, maxYear, startIndex) {
-  let endpoint = `/Items?IncludeItemTypes=Movie&Recursive=true&fields=Overview,Genres,ProductionYear,OfficialRating,CommunityRating,MediaStreams&Limit=96&StartIndex=${startIndex || 0}`;
+  let endpoint = `/Items?IncludeItemTypes=Movie&Recursive=true&fields=Overview,Genres,ProductionYear,OfficialRating,CommunityRating,MediaStreams,MediaSources&Limit=96&StartIndex=${startIndex || 0}`;
   endpoint += `&SortBy=${sortBy || 'SortName'}&SortOrder=${sortOrder || 'Ascending'}`;
   if (genre) endpoint += `&Genres=${encodeURIComponent(genre)}`;
   if (minYear) endpoint += `&MinPremiereDate=${minYear}-01-01`;
