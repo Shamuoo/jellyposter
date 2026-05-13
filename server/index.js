@@ -81,9 +81,13 @@ function is3DSource(streams, source) {
 function qualitiesFromSource(streams, source) {
   const tags = [];
   const video = streams && streams.find(s => s.Type === 'Video');
-  const res = qualityFromVideo(video);
-  if (res) tags.push(res);
-  if (is3DSource(streams, source)) tags.push('3D');
+  const is3D = is3DSource(streams, source);
+  if (!is3D) {
+    // Only add resolution if not 3D (3D sources often report inflated resolution due to SBS)
+    const res = qualityFromVideo(video);
+    if (res) tags.push(res);
+  }
+  if (is3D) tags.push('3D');
   return tags;
 }
 
@@ -451,10 +455,28 @@ const server = http.createServer(async (req, res) => {
     '/api/weather': async () => JSON.stringify(await getWeather(parsed.query.city || '')),
     '/api/person-image': async () => {
       const personId = parsed.query.id;
-      if (!personId) { res.writeHead(400); return '{}'; }
-      // Redirect to Jellyfin person image
+      if (!personId) { res.writeHead(400); res.end(); return null; }
+      // Proxy the image directly
       const imgUrl = `${JELLYFIN_URL}/Items/${personId}/Images/Primary?maxWidth=185&api_key=${JELLYFIN_API_KEY}`;
-      res.writeHead(302, { 'Location': imgUrl });
+      try {
+        const imgParsed = new (require('url').URL)(imgUrl);
+        const lib = imgParsed.protocol === 'https:' ? require('https') : require('http');
+        const imgReq = lib.request({
+          hostname: imgParsed.hostname,
+          port: imgParsed.port || (imgParsed.protocol === 'https:' ? 443 : 80),
+          path: imgParsed.pathname + imgParsed.search,
+          method: 'GET',
+          timeout: 5000,
+        }, (imgRes) => {
+          res.writeHead(imgRes.statusCode, {
+            'Content-Type': imgRes.headers['content-type'] || 'image/jpeg',
+            'Cache-Control': 'public, max-age=86400',
+          });
+          imgRes.pipe(res);
+        });
+        imgReq.on('error', () => { if (!res.headersSent) { res.writeHead(404); res.end(); } });
+        imgReq.end();
+      } catch(e) { if (!res.headersSent) { res.writeHead(500); res.end(); } }
       return null;
     },
     '/api/jellyfin-url': async () => JSON.stringify({ url: JELLYFIN_URL, key: JELLYFIN_API_KEY }),
@@ -468,26 +490,58 @@ const server = http.createServer(async (req, res) => {
     '/api/server-health': async () => {
       const start = Date.now();
       try {
-        const [info, sessions, activity] = await Promise.all([
+        const [info, sessions, activity, libraries, devices, plugins] = await Promise.all([
           jellyfinGet('/System/Info'),
           jellyfinGet('/Sessions'),
-          jellyfinGet('/System/ActivityLog/Entries?Limit=5'),
+          jellyfinGet('/System/ActivityLog/Entries?Limit=10'),
+          jellyfinGet('/Library/VirtualFolders'),
+          jellyfinGet('/Devices'),
+          jellyfinGet('/Plugins').catch(() => ({ Items: [] })),
         ]);
         const latency = Date.now() - start;
-        const activeSessions = sessions.filter(s => s.NowPlayingItem).length;
-        const transcoding = sessions.filter(s => s.TranscodingInfo && s.NowPlayingItem).length;
+        const allSessions = sessions || [];
+        const activeSessions = allSessions.filter(s => s.NowPlayingItem);
+        const transcoding = activeSessions.filter(s => s.TranscodingInfo);
         return JSON.stringify({
           latency,
           serverName: info.ServerName,
           version: info.Version,
           os: info.OperatingSystem,
-          activeSessions,
-          transcoding,
-          uptime: info.StartupWizardCompleted,
+          architecture: info.SystemArchitecture,
           localAddress: info.LocalAddress,
           wanAddress: info.WanAddress,
-          recentActivity: (activity.Items || []).slice(0,5).map(a => ({
-            name: a.Name, date: a.Date, severity: a.Severity,
+          hasUpdateAvailable: info.HasUpdateAvailable,
+          canSelfUpdate: info.CanSelfUpdate,
+          activeSessions: activeSessions.length,
+          totalSessions: allSessions.length,
+          transcoding: transcoding.length,
+          transcodingDetails: transcoding.map(s => ({
+            user: s.UserName,
+            title: s.NowPlayingItem && s.NowPlayingItem.Name,
+            codec: s.TranscodingInfo && s.TranscodingInfo.VideoCodec,
+            bitrate: s.TranscodingInfo && s.TranscodingInfo.Bitrate,
+            progress: s.TranscodingInfo && s.TranscodingInfo.CompletionPercentage,
+            isVideoDirect: s.TranscodingInfo && s.TranscodingInfo.IsVideoDirect,
+            isAudioDirect: s.TranscodingInfo && s.TranscodingInfo.IsAudioDirect,
+            hardwareAccel: s.TranscodingInfo && s.TranscodingInfo.IsVideoDirect === false && s.TranscodingInfo.TranscodeReasons && s.TranscodingInfo.TranscodeReasons.length > 0,
+          })),
+          nowPlaying: activeSessions.map(s => ({
+            user: s.UserName,
+            title: s.NowPlayingItem && s.NowPlayingItem.Name,
+            client: s.Client,
+            device: s.DeviceName,
+            isPaused: s.PlayState && s.PlayState.IsPaused,
+            progress: s.NowPlayingItem && s.PlayState ? Math.round((s.PlayState.PositionTicks || 0) / (s.NowPlayingItem.RunTimeTicks || 1) * 100) : 0,
+          })),
+          libraries: (libraries || []).map(l => ({
+            name: l.Name,
+            type: l.CollectionType,
+            paths: l.Locations,
+          })),
+          deviceCount: devices && devices.TotalRecordCount,
+          plugins: (plugins.Items || []).map(p => ({ name: p.Name, version: p.Version, status: p.Status })),
+          recentActivity: (activity.Items || []).slice(0, 10).map(a => ({
+            name: a.Name, date: a.Date, severity: a.Severity, overview: a.Overview,
           })),
         });
       } catch(e) {

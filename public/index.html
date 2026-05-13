@@ -1088,34 +1088,69 @@
     try {
       const r = await fetch('/api/server-health'); const d = await r.json();
       if (d.error) { body.innerHTML = `<div style="color:#e74c3c;padding:20px;font-size:12px;">${d.error}</div>`; return; }
-      const latencyClass = d.latency < 50 ? 'good' : d.latency < 200 ? 'warn' : 'bad';
-      const latencyW = Math.min(100, (d.latency / 500) * 100);
-      const latencyColor = d.latency < 50 ? '#2ecc71' : d.latency < 200 ? '#f39c12' : '#e74c3c';
+      const lc = d.latency < 50 ? 'good' : d.latency < 200 ? 'warn' : 'bad';
+      const lw = Math.min(100, (d.latency/500)*100);
+      const lcol = d.latency < 50 ? '#2ecc71' : d.latency < 200 ? '#f39c12' : '#e74c3c';
+      function hstat(label, value, cls='') { return `<div class="h-stat"><span class="h-stat-label">${label}</span><span class="h-stat-value ${cls}">${value||'—'}</span></div>`; }
       body.innerHTML = `
         <div class="h-card">
           <div class="h-card-title">Connection</div>
-          <div class="h-stat"><span class="h-stat-label">Latency</span><span class="h-stat-value ${latencyClass}">${d.latency}ms</span></div>
-          <div class="h-latency-bar"><div class="h-latency-fill" style="width:${latencyW}%;background:${latencyColor};"></div></div>
-          <div class="h-stat" style="margin-top:10px"><span class="h-stat-label">Server</span><span class="h-stat-value">${d.serverName||'—'}</span></div>
-          <div class="h-stat"><span class="h-stat-label">Version</span><span class="h-stat-value">${d.version||'—'}</span></div>
-          <div class="h-stat"><span class="h-stat-label">OS</span><span class="h-stat-value">${d.os||'—'}</span></div>
-        </div>
-        <div class="h-card">
-          <div class="h-card-title">Sessions</div>
-          <div class="h-stat"><span class="h-stat-label">Active</span><span class="h-stat-value ${d.activeSessions>0?'good':''}">${d.activeSessions}</span></div>
-          <div class="h-stat"><span class="h-stat-label">Transcoding</span><span class="h-stat-value ${d.transcoding>0?'warn':'good'}">${d.transcoding}</span></div>
+          ${hstat('Latency', d.latency+'ms', lc)}
+          <div class="h-latency-bar"><div class="h-latency-fill" style="width:${lw}%;background:${lcol};"></div></div>
+          ${hstat('Server', d.serverName)}
+          ${hstat('Version', d.version)}
+          ${hstat('OS', d.os)}
+          ${hstat('Architecture', d.architecture)}
+          ${d.hasUpdateAvailable ? '<div class="h-stat"><span class="h-stat-label">Update</span><span class="h-stat-value warn">Available</span></div>' : ''}
         </div>
         <div class="h-card">
           <div class="h-card-title">Network</div>
-          <div class="h-stat"><span class="h-stat-label">Local</span><span class="h-stat-value">${d.localAddress||'—'}</span></div>
-          <div class="h-stat"><span class="h-stat-label">WAN</span><span class="h-stat-value">${d.wanAddress||'—'}</span></div>
-        </div>`;
-      // Activity
+          ${hstat('Local Address', d.localAddress)}
+          ${hstat('WAN Address', d.wanAddress)}
+          ${hstat('Total Devices', d.deviceCount)}
+        </div>
+        <div class="h-card">
+          <div class="h-card-title">Sessions</div>
+          ${hstat('Now Playing', d.activeSessions, d.activeSessions > 0 ? 'good' : '')}
+          ${hstat('Total Connected', d.totalSessions)}
+          ${hstat('Transcoding', d.transcoding, d.transcoding > 0 ? 'warn' : 'good')}
+          ${(d.nowPlaying||[]).map(s=>`<div style="margin-top:8px;padding:8px;background:rgba(255,255,255,0.03);border-radius:4px;border:1px solid rgba(255,255,255,0.05);">
+            <div style="font-size:9px;font-weight:700;color:var(--accent);opacity:0.6;letter-spacing:0.15em;margin-bottom:4px;">${s.user||''} on ${s.device||''}</div>
+            <div style="font-size:10px;color:var(--cream);opacity:0.55;">${s.title||''}</div>
+            <div style="font-size:8px;color:var(--cream);opacity:0.25;margin-top:2px;">${s.isPaused?'⏸ Paused':'▶ Playing'} · ${s.progress}%</div>
+          </div>`).join('')}
+        </div>
+        ${(d.transcodingDetails||[]).length ? `<div class="h-card">
+          <div class="h-card-title">Transcoding Details</div>
+          ${(d.transcodingDetails||[]).map(t=>`
+            <div style="margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,0.04);">
+              <div style="font-size:9px;color:var(--accent);opacity:0.6;margin-bottom:4px;">${t.user||''} — ${t.title||''}</div>
+              ${hstat('Video', t.isVideoDirect ? 'Direct' : t.codec||'Transcoding', t.isVideoDirect ? 'good' : 'warn')}
+              ${hstat('Audio', t.isAudioDirect ? 'Direct' : 'Transcoding', t.isAudioDirect ? 'good' : 'warn')}
+              ${t.bitrate ? hstat('Bitrate', Math.round(t.bitrate/1000)+' kbps') : ''}
+              ${t.progress != null ? hstat('Progress', Math.round(t.progress)+'%') : ''}
+            </div>`).join('')}
+        </div>` : ''}
+        <div class="h-card" style="grid-column: 1 / -1;">
+          <div class="h-card-title">Libraries</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;">
+          ${(d.libraries||[]).map(l=>`<div style="padding:8px;background:rgba(255,255,255,0.03);border-radius:4px;border:1px solid rgba(255,255,255,0.05);">
+            <div style="font-size:9px;font-weight:700;color:var(--accent);opacity:0.6;letter-spacing:0.12em;margin-bottom:3px;">${l.type||'media'}</div>
+            <div style="font-size:11px;color:var(--cream);opacity:0.6;">${l.name||''}</div>
+            ${(l.paths||[]).map(p=>`<div style="font-size:8px;color:var(--cream);opacity:0.2;margin-top:2px;word-break:break-all;">${p}</div>`).join('')}
+          </div>`).join('')}
+          </div>
+        </div>
+        ${(d.plugins||[]).length ? `<div class="h-card">
+          <div class="h-card-title">Plugins (${d.plugins.length})</div>
+          ${(d.plugins||[]).map(p=>`<div class="h-stat"><span class="h-stat-label">${p.name}</span><span class="h-stat-value" style="font-size:9px;opacity:0.4;">${p.version||''}</span></div>`).join('')}
+        </div>` : ''}`;
       const actList = document.getElementById('health-activity-list');
       actList.innerHTML = '';
       (d.recentActivity||[]).forEach(a => {
         const el = document.createElement('div'); el.className = 'h-activity-item';
-        el.innerHTML = `<span class="h-activity-name">${a.name||''}</span><span class="h-activity-date">${a.date ? new Date(a.date).toLocaleString() : ''}</span>`;
+        const sev = a.severity === 'Error' ? '#e74c3c' : a.severity === 'Warning' ? '#f39c12' : 'rgba(240,232,213,0.5)';
+        el.innerHTML = `<div><div class="h-activity-name" style="color:${sev}">${a.name||''}</div>${a.overview?`<div style="font-size:9px;color:rgba(240,232,213,0.2);margin-top:2px;">${a.overview}</div>`:''}</div><span class="h-activity-date">${a.date?new Date(a.date).toLocaleString():''}</span>`;
         actList.appendChild(el);
       });
     } catch(e) { body.innerHTML = `<div style="color:#e74c3c;padding:20px;font-size:12px;">${e.message}</div>`; }
