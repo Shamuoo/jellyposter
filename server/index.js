@@ -808,6 +808,28 @@ Return JSON with these fields (keep existing values if already good, improve if 
     '/api/search': async () => JSON.stringify(await searchLibrary(parsed.query.q || '')),
     '/api/all-movies': async () => JSON.stringify(await getAllMovies(parsed.query.sort, parsed.query.order, parsed.query.genre, parsed.query.minYear, parsed.query.maxYear, parseInt(parsed.query.start || '0'))),
     '/api/genres': async () => JSON.stringify(await getAllGenres()),
+    '/api/best-3d': async () => {
+      // Movies widely regarded as excellent 3D experiences
+      const best3D = ['Avatar', 'How to Train Your Dragon', 'Life of Pi', 'Gravity',
+        'Pacific Rim', 'Prometheus', 'The Walk', 'Hugo', 'Pina', 'Cave of Forgotten Dreams',
+        'Doctor Strange', 'Jungle Book', 'Thor Ragnarok', 'Spider-Man', 'Into the Spider-Verse',
+        'Avengers', 'Transformers', 'Alice in Wonderland', 'Coraline', 'Up', 'Monsters Inc',
+        'Ice Age', 'Rio', 'The Amazing Spider-Man', 'Man of Steel', 'Interstellar',
+        'Mad Max Fury Road', 'The Martian', 'Everest', 'Mission Impossible', 'John Wick',
+        'Star Wars', 'Rogue One', 'Top Gun Maverick', 'Dune', 'Tenet'];
+      // Find movies in library that match and have 3D versions
+      const data = await jellyfinGet('/Items?IncludeItemTypes=Movie&Recursive=true&Limit=500&fields=MediaSources,MediaStreams&SortBy=SortName');
+      const results = (data.Items || []).filter(item => {
+        const sources = item.MediaSources || [];
+        const has3D = sources.some(s => /3d|hsbs|h-sbs|mvc/i.test(s.Name||'') || /3d|hsbs|h-sbs|mvc/i.test(s.Path||''));
+        const isGood3D = best3D.some(title => item.Name && item.Name.toLowerCase().includes(title.toLowerCase()));
+        return has3D && isGood3D;
+      }).map(i => ({
+        id: i.Id, title: i.Name,
+        posterUrl: posterUrl(i.Id), backdropUrl: backdropUrl(i.Id),
+      }));
+      return JSON.stringify(results);
+    },
     '/api/weather': async () => JSON.stringify(await getWeather(parsed.query.city || '')),
     '/api/person-image': async () => {
       const personId = parsed.query.id;

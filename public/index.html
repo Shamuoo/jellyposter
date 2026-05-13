@@ -850,6 +850,7 @@
     <div class="idle-section" id="section-popular"><div class="idle-section-label">Most Popular</div><div class="poster-row" id="popular-row"></div></div>
     <div class="idle-section" id="section-history"><div class="idle-section-label">Watch History</div><div class="poster-row" id="history-row"></div></div>
     <div class="idle-section" id="section-onthisday"><div class="idle-section-label">On This Day</div><div class="poster-row" id="onthisday-row"></div></div>
+    <div class="idle-section" id="section-best3d"><div class="idle-section-label">Best in 3D</div><div class="poster-row" id="best3d-row"></div></div>
     <div class="idle-section" id="section-coming"><div class="idle-section-label">Coming Soon</div><div class="poster-row" id="coming-soon-row"></div></div>
   </div>
 
@@ -901,7 +902,7 @@
     if(qc){qc.style.color=S.quality;qc.style.background=`rgba(${qR},0.1)`;qc.style.borderColor=`rgba(${qR},0.2)`;}
     const titleEl=document.getElementById('title');
     if(titleEl){const fonts={default:"'Montserrat',sans-serif",bebas:"'Bebas Neue',sans-serif",playfair:"'Playfair Display',serif",inter:"'Inter',sans-serif"};titleEl.style.fontFamily=fonts[S.titleFont]||fonts.default;}
-    const map={'section-recent':S.togRecent,'section-coming':S.togComing,'section-continue':S.togContinue,'section-popular':S.togPopular,'section-history':S.togHistory,'section-onthisday':S.togOnthisday,'lucky-section':S.togLucky,'stats-bar':S.togStats};
+    const map={'section-recent':S.togRecent,'section-coming':S.togComing,'section-continue':S.togContinue,'section-popular':S.togPopular,'section-history':S.togHistory,'section-onthisday':S.togOnthisday,'section-best3d':true,'lucky-section':S.togLucky,'stats-bar':S.togStats};
     Object.entries(map).forEach(([id,show])=>{const el=document.getElementById(id);if(el)el.style.display=show?'':'none';});
     const ww=document.getElementById('weather-widget');if(ww)ww.style.display=(S.togWeather&&S.city)?'':'none';
     document.getElementById('pick-accent').value=S.accent;
@@ -1023,7 +1024,7 @@
 
   // ════ WEATHER ════
   function wIcon(c){if(c===113)return'☀️';if(c===116)return'⛅';if([119,122].includes(c))return'☁️';if([143,248,260].includes(c))return'🌫️';if([176,293,296,299,302,305,308].includes(c))return'🌧️';if([179,323,326,329,332,335,338,350,368,371].includes(c))return'❄️';if([200,386,389,392,395].includes(c))return'⛈️';return'🌡️';}
-  async function loadWeather(){if(!S.city||!S.togWeather){document.getElementById('weather-widget').classList.remove('loaded');return;}try{const r=await fetch(`/api/weather?city=${encodeURIComponent(S.city)}`);const d=await r.json();if(!d)return;document.getElementById('weather-icon').textContent=wIcon(d.code);document.getElementById('weather-temp').textContent=S.units==='F'?`${d.tempF}°F`:`${d.temp}°C`;document.getElementById('weather-desc').textContent=d.desc;document.getElementById('weather-widget').classList.add('loaded');}catch(e){}}
+  async function loadWeather(){if(!S.togWeather){document.getElementById('weather-widget').classList.remove('loaded');return;}if(!S.city){S.city='Brisbane';}try{const r=await fetch(`/api/weather?city=${encodeURIComponent(S.city)}`);const d=await r.json();if(!d)return;document.getElementById('weather-icon').textContent=wIcon(d.code);document.getElementById('weather-temp').textContent=S.units==='F'?`${d.tempF}°F`:`${d.temp}°C`;document.getElementById('weather-desc').textContent=d.desc;document.getElementById('weather-widget').classList.add('loaded');}catch(e){}}
   loadWeather();setInterval(loadWeather,15*60*1000);
 
   // ════ STATS ════
@@ -1057,8 +1058,11 @@
   // ════ DETAIL MODAL ════
   let detailQR=null;
   function openDetail(item){
+    if(!item){console.warn('openDetail: no item');return;}
     playSound('open');
-    const modal=document.getElementById('detail-modal');modal.classList.add('open');
+    const modal=document.getElementById('detail-modal');
+    if(!modal){console.error('detail-modal not found');return;}
+    modal.classList.add('open');
     const dp=document.getElementById('detail-poster'),dph=document.getElementById('detail-poster-ph');
     if(item.posterUrl){dp.style.display='block';dph.style.display='none';dp.src=item.posterUrl;dp.onerror=()=>{dp.style.display='none';dph.style.display='flex';};}
     else{dp.style.display='none';dph.style.display='flex';}
@@ -1257,6 +1261,7 @@
     await loadRow('/api/popular','popular-row','Movie');
     await loadRow('/api/history','history-row','Movie');
     await loadRow('/api/on-this-day','onthisday-row','Movie');
+    await loadRow('/api/best-3d','best3d-row','Movie');
     if(ssItems.length&&isIdle)resetIdleT();
   }
 
@@ -1501,6 +1506,130 @@
   document.getElementById('health-btn').addEventListener('click', () => { toolsOverlay.classList.remove('open'); browseOverlay.classList.remove('open'); healthOverlay.classList.add('open'); loadHealth(); playSound('open'); });
   document.getElementById('health-back').addEventListener('click', () => { healthOverlay.classList.remove('open'); showIdle(); playSound('click'); });
   document.getElementById('health-refresh').addEventListener('click', () => { loadHealth(); playSound('click'); });
+
+  async function loadSystemStats() {
+    try {
+      const r = await fetch('/api/system-stats'); const d = await r.json();
+      if (d.error) return;
+      const cpuCol = d.cpuPercent > 80 ? '#e74c3c' : d.cpuPercent > 50 ? '#f39c12' : '#2ecc71';
+      const ramCol = d.ramPercent > 85 ? '#e74c3c' : d.ramPercent > 60 ? '#f39c12' : '#2ecc71';
+      const fmt = s => { const d2=Math.floor(s/86400),h=Math.floor((s%86400)/3600),m=Math.floor((s%3600)/60); return [d2&&`${d2}d`,h&&`${h}h`,`${m}m`].filter(Boolean).join(' '); };
+      const fmtB = b => b > 1073741824 ? (b/1073741824).toFixed(1)+'GB' : (b/1048576).toFixed(0)+'MB';
+      let html = `
+        <div class="h-card"><div class="h-card-title">CPU</div>
+          ${d.cpuModel ? `<div style="font-size:9px;color:rgba(240,232,213,0.25);margin-bottom:8px;">${d.cpuModel} (${d.cpuCores||'?'} cores)</div>` : ''}
+          <div class="h-stat"><span class="h-stat-label">Usage</span><span class="h-stat-value" style="color:${cpuCol}">${d.cpuPercent||0}%</span></div>
+          <div class="sys-bar"><div class="sys-bar-fill" style="width:${d.cpuPercent||0}%;background:${cpuCol}"></div></div>
+          <div class="h-stat" style="margin-top:8px"><span class="h-stat-label">Load 1m / 5m</span><span class="h-stat-value">${d.load1||0} / ${d.load5||0}</span></div>
+          <div class="h-stat"><span class="h-stat-label">Uptime</span><span class="h-stat-value">${d.uptimeSeconds ? fmt(d.uptimeSeconds) : '—'}</span></div>
+        </div>
+        <div class="h-card"><div class="h-card-title">Memory</div>
+          <div class="h-stat"><span class="h-stat-label">Used / Total</span><span class="h-stat-value" style="color:${ramCol}">${d.ramUsed||0} / ${d.ramTotal||0} MB</span></div>
+          <div class="sys-bar"><div class="sys-bar-fill" style="width:${d.ramPercent||0}%;background:${ramCol}"></div></div>
+        </div>`;
+      if (d.disks && d.disks.length) {
+        html += `<div class="h-card"><div class="h-card-title">Storage</div>`;
+        d.disks.forEach(disk => {
+          const pct = parseInt(disk.percent)||0;
+          const col = pct > 90 ? '#e74c3c' : pct > 75 ? '#f39c12' : '#2ecc71';
+          html += `<div style="margin-bottom:8px"><div style="font-size:8px;color:rgba(240,232,213,0.25);margin-bottom:3px">${disk.mount}</div>
+            <div class="h-stat"><span class="h-stat-label">${disk.used} / ${disk.size}</span><span class="h-stat-value" style="color:${col}">${disk.percent}</span></div>
+            <div class="sys-bar"><div class="sys-bar-fill" style="width:${pct}%;background:${col}"></div></div></div>`;
+        });
+        html += `</div>`;
+      }
+      if (d.network && d.network.length) {
+        html += `<div class="h-card"><div class="h-card-title">Network</div>`;
+        d.network.forEach(n => { html += `<div class="h-stat"><span class="h-stat-label">${n.iface} ↓/↑</span><span class="h-stat-value">${fmtB(n.rxBytes)} / ${fmtB(n.txBytes)}</span></div>`; });
+        html += `</div>`;
+      }
+      const healthBody = document.getElementById('health-body');
+      if (healthBody) {
+        const old = document.getElementById('sys-stats-cards');
+        if (old) old.remove();
+        const div = document.createElement('div');
+        div.id = 'sys-stats-cards'; div.style.cssText = 'display:contents';
+        div.innerHTML = html;
+        healthBody.appendChild(div);
+      }
+    } catch(e) { console.warn('system stats error:', e); }
+  }
+
+  async function loadHealth() {
+    const body = document.getElementById('health-body');
+    if (!body) return;
+    body.innerHTML = '<div style="color:rgba(240,232,213,0.2);font-size:12px;padding:20px;font-style:italic;font-family:Cormorant Garamond,serif;">Loading...</div>';
+    try {
+      const r = await fetch('/api/server-health'); const d = await r.json();
+      if (d.error) { body.innerHTML = `<div style="color:#e74c3c;padding:20px;font-size:12px;">${d.error}</div>`; return; }
+      const lc = d.latency < 50 ? 'good' : d.latency < 200 ? 'warn' : 'bad';
+      const lw = Math.min(100, (d.latency/500)*100);
+      const lcol = d.latency < 50 ? '#2ecc71' : d.latency < 200 ? '#f39c12' : '#e74c3c';
+      function hstat(label, value, cls='') { return `<div class="h-stat"><span class="h-stat-label">${label}</span><span class="h-stat-value ${cls}">${value||'—'}</span></div>`; }
+      body.innerHTML = `
+        <div class="h-card">
+          <div class="h-card-title">JellyPoster</div>
+          ${hstat('Version', d.jellyPosterVersion||'v0.8.1')}
+          ${d.github ? hstat('Latest Release', d.github.latestRelease, d.github.isLatest ? 'good' : 'warn') : ''}
+          ${d.github && !d.github.isLatest ? `<div class="h-stat"><span class="h-stat-label" style="color:#f39c12">Update Available</span><span class="h-stat-value warn">${d.github.latestRelease}</span></div>` : ''}
+          ${d.github && d.github.publishedAt ? hstat('Released', new Date(d.github.publishedAt).toLocaleDateString()) : ''}
+        </div>
+        <div class="h-card">
+          <div class="h-card-title">Connection</div>
+          ${hstat('Latency', d.latency+'ms', lc)}
+          <div class="h-latency-bar"><div class="h-latency-fill" style="width:${lw}%;background:${lcol}"></div></div>
+          ${hstat('Server', d.serverName)}
+          ${hstat('Version', d.version)}
+          ${hstat('OS', d.os)}
+          ${hstat('Architecture', d.architecture)}
+          ${d.hasUpdateAvailable ? hstat('Jellyfin Update', 'Available', 'warn') : ''}
+        </div>
+        <div class="h-card">
+          <div class="h-card-title">Network</div>
+          ${hstat('Local', d.localAddress)}
+          ${hstat('WAN', d.wanAddress)}
+          ${hstat('Devices', d.deviceCount)}
+        </div>
+        <div class="h-card">
+          <div class="h-card-title">Sessions</div>
+          ${hstat('Now Playing', d.activeSessions, d.activeSessions > 0 ? 'good' : '')}
+          ${hstat('Connected', d.totalSessions)}
+          ${hstat('Transcoding', d.transcoding, d.transcoding > 0 ? 'warn' : 'good')}
+          ${(d.nowPlaying||[]).map(s=>`<div style="margin-top:8px;padding:8px;background:rgba(255,255,255,0.03);border-radius:4px;border:1px solid rgba(255,255,255,0.05)">
+            <div style="font-size:9px;color:var(--accent);opacity:0.6;margin-bottom:3px">${s.user} on ${s.device}</div>
+            <div style="font-size:10px;color:var(--cream);opacity:0.55">${s.title}</div>
+            <div style="font-size:8px;color:var(--cream);opacity:0.25;margin-top:2px">${s.isPaused?'⏸ Paused':'▶ Playing'} · ${s.progress}%</div>
+          </div>`).join('')}
+        </div>
+        ${(d.libraries||[]).length ? `<div class="h-card" style="grid-column:1/-1">
+          <div class="h-card-title">Libraries</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px">
+          ${(d.libraries||[]).map(l=>`<div style="padding:8px;background:rgba(255,255,255,0.03);border-radius:4px;border:1px solid rgba(255,255,255,0.05)">
+            <div style="font-size:8px;color:var(--accent);opacity:0.5;margin-bottom:3px">${l.type||'media'}</div>
+            <div style="font-size:11px;color:var(--cream);opacity:0.55">${l.name}</div>
+            ${(l.paths||[]).map(p=>`<div style="font-size:7px;color:var(--cream);opacity:0.2;margin-top:2px;word-break:break-all">${p}</div>`).join('')}
+          </div>`).join('')}
+          </div>
+        </div>` : ''}
+        ${(d.plugins||[]).length ? `<div class="h-card"><div class="h-card-title">Plugins</div>
+          ${(d.plugins||[]).map(p=>hstat(p.name, p.version||'')).join('')}
+        </div>` : ''}`;
+      // Activity log
+      const actList = document.getElementById('health-activity-list');
+      if (actList) {
+        actList.innerHTML = '';
+        (d.recentActivity||[]).forEach(a => {
+          const el = document.createElement('div'); el.className = 'h-activity-item';
+          const col = a.severity === 'Error' ? '#e74c3c' : a.severity === 'Warning' ? '#f39c12' : 'rgba(240,232,213,0.5)';
+          el.innerHTML = `<div><div class="h-activity-name" style="color:${col}">${a.name||''}</div>${a.overview?`<div style="font-size:9px;color:rgba(240,232,213,0.2);margin-top:2px">${a.overview}</div>`:''}</div><span class="h-activity-date">${a.date?new Date(a.date).toLocaleString():''}</span>`;
+          actList.appendChild(el);
+        });
+      }
+    } catch(e) { body.innerHTML = `<div style="color:#e74c3c;padding:20px;font-size:12px;">${e.message}</div>`; }
+    await loadSystemStats();
+  }
+
+
 
   // Nav
   document.querySelectorAll('.tools-nav-item').forEach(item => {
