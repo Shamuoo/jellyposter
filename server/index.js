@@ -143,7 +143,7 @@ function deduplicateMovies(items) {
       const allQualities = [...new Set([...(existing.qualities || []), ...(item.qualities || [])])];
       existing.qualities = allQualities;
       // Keep best quality item as primary
-      const qOrder = ['4K', '1080p', '720p', '3D', '480p'];
+      const qOrder = ['4K','4K 3D','1080p 3D','1080p','720p 3D','720p','3D','480p 3D','480p'];
       const existingBest = qOrder.indexOf(existing.qualities[0]);
       const newBest = qOrder.indexOf(item.qualities[0]);
       if (newBest < existingBest) {
@@ -179,7 +179,7 @@ function mapItem(i) {
     return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
   });
   // versionCount from MediaSources
-  const versionCount = sources ? sources.filter(s => s.Type !== 'Grouping' || true).length : 1;
+  const versionCount = sources ? sources.length : 1;
   const audio = audioFromStreams(i.MediaStreams);
   const people = i.People || [];
   return {
@@ -333,7 +333,7 @@ const getComingSoon = cached('coming', 60 * 60 * 1000, async () => {
 const getContinueWatching = cached('continue', 2 * 60 * 1000, async () => {
   const userId = await getAdminUserId();
   if (!userId) return [];
-  const data = await jellyfinGet(`/Users/${userId}/Items/Resume?MediaType=Video&Limit=16&fields=Overview,Genres,ProductionYear,OfficialRating,UserData,MediaStreams`);
+  const data = await jellyfinGet(`/Users/${userId}/Items/Resume?MediaType=Video&Limit=16&fields=Overview,Genres,ProductionYear,OfficialRating,UserData,MediaStreams,MediaSources`);
   const items = (data.Items || []).map(i => ({
     ...mapItem(i),
     type: i.Type, seriesName: i.SeriesName,
@@ -343,7 +343,7 @@ const getContinueWatching = cached('continue', 2 * 60 * 1000, async () => {
 });
 
 const getPopular = cached('popular', 30 * 60 * 1000, async () => {
-  const data = await jellyfinGet(`/Items?IncludeItemTypes=Movie&SortBy=PlayCount&SortOrder=Descending&Limit=24&fields=Overview,Genres,ProductionYear,OfficialRating,CommunityRating,People,MediaStreams,UserData&Recursive=true&Filters=IsPlayed`);
+  const data = await jellyfinGet(`/Items?IncludeItemTypes=Movie&SortBy=PlayCount&SortOrder=Descending&Limit=24&fields=Overview,Genres,ProductionYear,OfficialRating,CommunityRating,People,MediaStreams,MediaSources,UserData&Recursive=true&Filters=IsPlayed`);
   const items = (data.Items || []).filter(i => i.UserData && i.UserData.PlayCount > 0).map(mapItem);
   return deduplicateMovies(items).slice(0, 12);
 });
@@ -496,7 +496,6 @@ const server = http.createServer(async (req, res) => {
       } catch(e) { if (!res.headersSent) { res.writeHead(500); res.end(); } }
       return null;
     },
-    '/api/jellyfin-url': async () => JSON.stringify({ url: JELLYFIN_URL, key: JELLYFIN_API_KEY }),
     '/api/storage': async () => {
       try {
         const libraries = await jellyfinGet('/Library/VirtualFolders');
@@ -507,13 +506,14 @@ const server = http.createServer(async (req, res) => {
     '/api/server-health': async () => {
       const start = Date.now();
       try {
-        const [info, sessions, activity, libraries, devices, plugins] = await Promise.all([
+        const [info, sessions, activity, libraries, devices, plugins, ghRelease] = await Promise.all([
           jellyfinGet('/System/Info'),
           jellyfinGet('/Sessions'),
           jellyfinGet('/System/ActivityLog/Entries?Limit=10'),
           jellyfinGet('/Library/VirtualFolders'),
           jellyfinGet('/Devices'),
           jellyfinGet('/Plugins').catch(() => ({ Items: [] })),
+          httpGet('https://api.github.com/repos/Shamuoo/jellyposter/releases/latest', { 'User-Agent': 'JellyPoster' }).catch(() => null),
         ]);
         const latency = Date.now() - start;
         const allSessions = sessions || [];
@@ -521,7 +521,15 @@ const server = http.createServer(async (req, res) => {
         const transcoding = activeSessions.filter(s => s.TranscodingInfo);
         return JSON.stringify({
           latency,
-          jellyPosterVersion: 'v0.7.2',
+          jellyPosterVersion: 'v0.7.3',
+          github: ghRelease ? {
+            latestRelease: ghRelease.tag_name,
+            releaseName: ghRelease.name,
+            publishedAt: ghRelease.published_at,
+            releaseUrl: ghRelease.html_url,
+            isLatest: ghRelease.tag_name === 'v0.7.3',
+            changelog: ghRelease.body ? ghRelease.body.slice(0, 500) : null,
+          } : null,
           serverName: info.ServerName,
           version: info.Version,
           os: info.OperatingSystem,

@@ -826,7 +826,7 @@
     if(item.trailerKey){dt.classList.add('visible');try{if(detailQR){detailQR.clear();detailQR.makeCode(`https://youtube.com/watch?v=${item.trailerKey}`);}else detailQR=new QRCode(document.getElementById('detail-qr'),{text:`https://youtube.com/watch?v=${item.trailerKey}`,width:52,height:52,colorDark:S.accent,colorLight:'#111009',correctLevel:QRCode.CorrectLevel.L});}catch(e){}}
     else dt.classList.remove('visible');
   }
-  function closeDetail(){document.getElementById('detail-modal').classList.remove('open');}
+  function closeDetail(){document.getElementById('detail-modal').classList.remove('open');if(detailFullscreen){detailFullscreen=false;document.getElementById('detail-card').classList.remove('fullscreen');document.getElementById('detail-fullscreen-btn').textContent='⛶';}}
   document.getElementById('detail-modal').addEventListener('click',e=>{if(e.target===document.getElementById('detail-modal'))closeDetail();});
   document.getElementById('detail-close').addEventListener('click',closeDetail);
 
@@ -1097,7 +1097,12 @@
           <div class="h-card-title">Connection</div>
           ${hstat('Latency', d.latency+'ms', lc)}
           <div class="h-latency-bar"><div class="h-latency-fill" style="width:${lw}%;background:${lcol};"></div></div>
-          ${hstat('JellyPoster', d.jellyPosterVersion||'v0.7.2')}
+          ${hstat('JellyPoster', d.jellyPosterVersion||'v0.7.3')}
+          ${d.github ? `
+            ${hstat('Latest Release', d.github.latestRelease, d.github.isLatest ? 'good' : 'warn')}
+            ${!d.github.isLatest ? `<div class="h-stat"><span class="h-stat-label">Update</span><a href="${d.github.releaseUrl}" target="_blank" style="font-size:10px;color:#f39c12;text-decoration:none;">↗ ${d.github.latestRelease} available</a></div>` : ''}
+            ${d.github.publishedAt ? hstat('Released', new Date(d.github.publishedAt).toLocaleDateString()) : ''}
+          ` : ''}
           ${hstat('Server', d.serverName)}
           ${hstat('Version', d.version)}
           ${hstat('OS', d.os)}
