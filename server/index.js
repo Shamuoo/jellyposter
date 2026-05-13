@@ -227,14 +227,17 @@ const caches = {};
 function cached(key, ttl, fn) {
   return async (...args) => {
     const now = Date.now();
-    if (caches[key] && now - caches[key].ts < ttl) return caches[key].data;
+    if (caches[key] && caches[key].ok && now - caches[key].ts < ttl) return caches[key].data;
     try {
       const data = await fn(...args);
-      caches[key] = { ts: now, data };
+      // Only cache if we got real data back
+      if (data !== null && data !== undefined && !(Array.isArray(data) && data.length === 0 && caches[key])) {
+        caches[key] = { ts: now, data, ok: true };
+      }
       return data;
     } catch (e) {
       console.error(`[error] ${key}:`, e.message);
-      return caches[key] ? caches[key].data : null;
+      return caches[key] ? caches[key].data : (Array.isArray([]) ? [] : null);
     }
   };
 }
@@ -351,8 +354,8 @@ const getContinueWatching = cached('continue', 2 * 60 * 1000, async () => {
 });
 
 const getPopular = cached('popular', 30 * 60 * 1000, async () => {
-  const data = await jellyfinGet(`/Items?IncludeItemTypes=Movie&SortBy=CommunityRating&SortOrder=Descending&Limit=24&fields=Overview,Genres,ProductionYear,OfficialRating,CommunityRating,People,MediaStreams,MediaSources&Recursive=true&MinCommunityRating=7`);
-  const items = (data.Items || []).map(mapItem);
+  const data = await jellyfinGet(`/Items?IncludeItemTypes=Movie&SortBy=CommunityRating&SortOrder=Descending&Limit=24&fields=Overview,Genres,ProductionYear,OfficialRating,CommunityRating,People,MediaStreams,MediaSources&Recursive=true`);
+  const items = (data.Items || []).filter(i => i.CommunityRating >= 7).map(mapItem);
   return deduplicateMovies(items).slice(0, 12);
 });
 
