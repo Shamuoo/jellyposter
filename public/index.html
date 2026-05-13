@@ -1496,6 +1496,12 @@
   document.getElementById('tools-btn').addEventListener('click', () => { healthOverlay.classList.remove('open'); browseOverlay.classList.remove('open'); toolsOverlay.classList.add('open'); runAllScans(); playSound('open'); });
   document.getElementById('tools-back').addEventListener('click', () => { toolsOverlay.classList.remove('open'); showIdle(); playSound('click'); });
 
+  // ════ HEALTH PAGE ════
+  const healthOverlay = document.getElementById('health-overlay');
+  document.getElementById('health-btn').addEventListener('click', () => { toolsOverlay.classList.remove('open'); browseOverlay.classList.remove('open'); healthOverlay.classList.add('open'); loadHealth(); playSound('open'); });
+  document.getElementById('health-back').addEventListener('click', () => { healthOverlay.classList.remove('open'); showIdle(); playSound('click'); });
+  document.getElementById('health-refresh').addEventListener('click', () => { loadHealth(); playSound('click'); });
+
   // Nav
   document.querySelectorAll('.tools-nav-item').forEach(item => {
     item.addEventListener('click', () => {
