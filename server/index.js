@@ -351,8 +351,8 @@ const getContinueWatching = cached('continue', 2 * 60 * 1000, async () => {
 });
 
 const getPopular = cached('popular', 30 * 60 * 1000, async () => {
-  const data = await jellyfinGet(`/Items?IncludeItemTypes=Movie&SortBy=PlayCount&SortOrder=Descending&Limit=24&fields=Overview,Genres,ProductionYear,OfficialRating,CommunityRating,People,MediaStreams,MediaSources,UserData&Recursive=true&Filters=IsPlayed`);
-  const items = (data.Items || []).filter(i => i.UserData && i.UserData.PlayCount > 0).map(mapItem);
+  const data = await jellyfinGet(`/Items?IncludeItemTypes=Movie&SortBy=CommunityRating&SortOrder=Descending&Limit=24&fields=Overview,Genres,ProductionYear,OfficialRating,CommunityRating,People,MediaStreams,MediaSources&Recursive=true&MinCommunityRating=7`);
+  const items = (data.Items || []).map(mapItem);
   return deduplicateMovies(items).slice(0, 12);
 });
 
