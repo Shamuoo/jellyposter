@@ -354,9 +354,17 @@ const getContinueWatching = cached('continue', 2 * 60 * 1000, async () => {
 });
 
 const getPopular = cached('popular', 30 * 60 * 1000, async () => {
-  const data = await jellyfinGet(`/Items?IncludeItemTypes=Movie&SortBy=CommunityRating&SortOrder=Descending&Limit=24&fields=Overview,Genres,ProductionYear,OfficialRating,CommunityRating,People,MediaStreams,MediaSources&Recursive=true`);
-  const items = (data.Items || []).filter(i => i.CommunityRating >= 7).map(mapItem);
-  return deduplicateMovies(items).slice(0, 12);
+  try {
+    const userId = await getAdminUserId();
+    const base = userId ? `/Users/${userId}/Items` : '/Items';
+    const data = await jellyfinGet(`${base}?IncludeItemTypes=Movie&SortBy=CommunityRating&SortOrder=Descending&Limit=24&fields=Overview,Genres,ProductionYear,OfficialRating,CommunityRating,People,MediaStreams,MediaSources&Recursive=true`);
+    if (!data || !data.Items) { console.error('[error] popular: no Items in response'); return []; }
+    const items = data.Items.filter(i => i.CommunityRating >= 7).map(mapItem);
+    return deduplicateMovies(items).slice(0, 12);
+  } catch(e) {
+    console.error('[error] popular:', e.message);
+    return [];
+  }
 });
 
 const getWatchHistory = cached('history', 5 * 60 * 1000, async () => {
@@ -1286,8 +1294,9 @@ Respond ONLY with a JSON object (no markdown, no explanation):
   if (routes[pathname]) {
     try {
       const body = await routes[pathname]();
-      if (body === null) { res.end(); return; }
-      if (!res.headersSent) res.writeHead(200, { 'Content-Type': 'application/json' });
+      if (body === null) { return; }  // response already handled (e.g. piped image)
+      if (res.headersSent) return;
+      res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(body);
     } catch (e) {
       res.writeHead(500, { 'Content-Type': 'application/json' });
