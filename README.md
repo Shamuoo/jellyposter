@@ -4,7 +4,7 @@ A cinema-style home theater display and library management tool for Jellyfin. Sh
 
 > **Note:** This project was entirely AI-coded (Claude by Anthropic) as a personal home theater side project. Shared as-is — use it, fork it, break it.
 
-**Current version: v0.8.0**
+
 
 ---
 
