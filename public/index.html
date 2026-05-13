@@ -600,7 +600,8 @@
         <div id="detail-rating-row"><div id="detail-stars"></div><div id="detail-score"></div></div>
         <div id="detail-release"></div>
         <div id="detail-trailer"><canvas id="detail-qr" width="52" height="52"></canvas><div id="detail-trailer-text">Scan to watch trailer</div></div>
-        <button id="detail-edit-btn" style="margin-top:12px;width:100%;padding:8px;border-radius:5px;border:1px solid rgba(201,168,76,0.2);background:rgba(201,168,76,0.06);color:var(--accent);font-size:9px;letter-spacing:0.2em;text-transform:uppercase;cursor:pointer;">✏ Edit Metadata</button>
+
+        <button id="detail-edit-btn" style="width:100%;padding:8px;border-radius:5px;border:1px solid rgba(201,168,76,0.2);background:rgba(201,168,76,0.06);color:var(--accent);font-size:9px;letter-spacing:0.2em;text-transform:uppercase;cursor:pointer;margin-bottom:10px;">✏ Edit Metadata</button>
         <div id="detail-tech" style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.05);display:none;">
           <div class="d-section" style="margin-bottom:8px;cursor:pointer;" id="detail-tech-toggle">Technical ▾</div>
           <div id="detail-tech-body" style="display:none;">
@@ -1082,7 +1083,7 @@
   loadWeather();setInterval(loadWeather,15*60*1000);
 
   // ════ STATS ════
-  async function loadStats(){try{const r=await fetch('/api/stats');const d=await r.json();document.getElementById('stat-movies').textContent=d.movies?d.movies.toLocaleString():'—';document.getElementById('stat-shows').textContent=d.shows?d.shows.toLocaleString():'—';document.getElementById('stat-episodes').textContent=d.episodes?d.episodes.toLocaleString():'—';}catch(e){}}
+  async function loadStats(){try{const r=await fetch('/api/stats?_='+Date.now());const d=await r.json();if(d.movies!==undefined)document.getElementById('stat-movies').textContent=Number(d.movies).toLocaleString();if(d.shows!==undefined)document.getElementById('stat-shows').textContent=Number(d.shows).toLocaleString();if(d.episodes!==undefined)document.getElementById('stat-episodes').textContent=Number(d.episodes).toLocaleString();}catch(e){console.warn('stats error',e);}}
   loadStats();
 
   // ════ SEARCH ════
@@ -1102,7 +1103,7 @@
         items.forEach(item=>{
           const el=document.createElement('div');el.className='search-result';
           el.innerHTML=`<img class="sr-poster" src="${item.posterUrl||''}" alt="" onerror="this.style.background='#1a1510'" /><div class="sr-info"><div class="sr-title">${item.title}</div><div class="sr-meta">${[item.year,item.type,item.genre].filter(Boolean).join(' · ')}</div>${item.overview?`<div class="sr-overview">${item.overview}</div>`:''}</div>`;
-          el.addEventListener('click',()=>{searchOverlay.classList.remove('open');openDetail(item);playSound('open');});
+          const _si=JSON.parse(JSON.stringify(item));el.addEventListener('click',()=>{searchOverlay.classList.remove('open');openDetail(_si);playSound('open');});
           res.appendChild(el);
         });
       }catch(e){}
@@ -1481,8 +1482,8 @@
   let browseStart = 0, browseTotal = 0, browseLoading = false;
   let browseSort = 'SortName', browseOrder = 'Ascending', browseGenre = '';
 
-  document.getElementById('browse-btn').addEventListener('click', () => { openBrowse(); playSound('open'); });
-  document.getElementById('browse-back').addEventListener('click', () => { browseOverlay.classList.remove('open'); playSound('click'); });
+  document.getElementById('browse-btn').addEventListener('click', () => { healthOverlay.classList.remove('open'); toolsOverlay.classList.remove('open'); openBrowse(); playSound('open'); });
+  document.getElementById('browse-back').addEventListener('click', () => { browseOverlay.classList.remove('open'); showIdle(); playSound('click'); });
 
   async function openBrowse() {
     browseOverlay.classList.add('open');
@@ -1700,8 +1701,8 @@
 
   // ════ HEALTH PAGE ════
   const healthOverlay = document.getElementById('health-overlay');
-  document.getElementById('health-btn').addEventListener('click', () => { healthOverlay.classList.add('open'); loadHealth(); playSound('open'); });
-  document.getElementById('health-back').addEventListener('click', () => { healthOverlay.classList.remove('open'); playSound('click'); });
+  document.getElementById('health-btn').addEventListener('click', () => { toolsOverlay.classList.remove('open'); browseOverlay.classList.remove('open'); healthOverlay.classList.add('open'); loadHealth(); playSound('open'); });
+  document.getElementById('health-back').addEventListener('click', () => { healthOverlay.classList.remove('open'); showIdle(); playSound('click'); });
   document.getElementById('health-refresh').addEventListener('click', () => { loadHealth(); playSound('click'); });
 
   async function loadSystemStats() {
@@ -1746,11 +1747,14 @@
       // Insert system stats at start of health body
       const healthBody = document.getElementById('health-body');
       if (healthBody) {
+        // Remove old sys stats if present
+        const old = document.getElementById('sys-stats-cards');
+        if (old) old.remove();
         const sysDiv = document.createElement('div');
         sysDiv.id = 'sys-stats-cards';
         sysDiv.style.cssText = 'display:contents';
         sysDiv.innerHTML = html;
-        healthBody.insertBefore(sysDiv, healthBody.firstChild);
+        healthBody.appendChild(sysDiv);
       }
     } catch(e) { console.warn('System stats error:', e); }
   }
@@ -1771,11 +1775,9 @@
           ${hstat('Latency', d.latency+'ms', lc)}
           <div class="h-latency-bar"><div class="h-latency-fill" style="width:${lw}%;background:${lcol};"></div></div>
           ${hstat('JellyPoster', d.jellyPosterVersion||'v0.8.0')}
-          ${d.github ? `
-            ${hstat('Latest Release', d.github.latestRelease, d.github.isLatest ? 'good' : 'warn')}
-            ${!d.github.isLatest ? `<div class="h-stat"><span class="h-stat-label">Update</span><a href="${d.github.releaseUrl}" target="_blank" style="font-size:10px;color:#f39c12;text-decoration:none;">↗ ${d.github.latestRelease} available</a></div>` : ''}
-            ${d.github.publishedAt ? hstat('Released', new Date(d.github.publishedAt).toLocaleDateString()) : ''}
-          ` : ''}
+          ${d.github ? hstat('Latest Release', d.github.latestRelease, d.github.isLatest ? 'good' : 'warn') : ''}
+          ${d.github && !d.github.isLatest ? '<div class="h-stat"><span class="h-stat-label" style="color:#f39c12">Update Available</span><span class="h-stat-value warn">' + d.github.latestRelease + '</span></div>' : ''}
+          ${d.github && d.github.publishedAt ? hstat('Released', new Date(d.github.publishedAt).toLocaleDateString()) : ''}
           ${hstat('Server', d.serverName)}
           ${hstat('Version', d.version)}
           ${hstat('OS', d.os)}
@@ -1924,8 +1926,8 @@
 
   // ════ LIBRARY TOOLS ════
   const toolsOverlay = document.getElementById('tools-overlay');
-  document.getElementById('tools-btn').addEventListener('click', () => { toolsOverlay.classList.add('open'); runAllScans(); playSound('open'); });
-  document.getElementById('tools-back').addEventListener('click', () => { toolsOverlay.classList.remove('open'); playSound('click'); });
+  document.getElementById('tools-btn').addEventListener('click', () => { healthOverlay.classList.remove('open'); browseOverlay.classList.remove('open'); toolsOverlay.classList.add('open'); runAllScans(); playSound('open'); });
+  document.getElementById('tools-back').addEventListener('click', () => { toolsOverlay.classList.remove('open'); showIdle(); playSound('click'); });
 
   // Nav
   document.querySelectorAll('.tools-nav-item').forEach(item => {

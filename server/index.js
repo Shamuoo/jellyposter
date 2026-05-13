@@ -391,16 +391,23 @@ const getOnThisDay = cached('onthisday', 60 * 60 * 1000, async () => {
 });
 
 const getStats = cached('stats', 10 * 60 * 1000, async () => {
-  const [movies, shows, episodes] = await Promise.all([
-    jellyfinGet('/Items?IncludeItemTypes=Movie&Recursive=true&Limit=0&EnableTotalRecordCount=true'),
-    jellyfinGet('/Items?IncludeItemTypes=Series&Recursive=true&Limit=0&EnableTotalRecordCount=true'),
-    jellyfinGet('/Items?IncludeItemTypes=Episode&Recursive=true&Limit=0&EnableTotalRecordCount=true'),
-  ]);
-  return {
-    movies: movies.TotalRecordCount || 0,
-    shows: shows.TotalRecordCount || 0,
-    episodes: episodes.TotalRecordCount || 0,
-  };
+  try {
+    const userId = await getAdminUserId();
+    const base = userId ? `/Users/${userId}/Items` : '/Items';
+    const [movies, shows, episodes] = await Promise.all([
+      jellyfinGet(`${base}?IncludeItemTypes=Movie&Recursive=true&Limit=0&EnableTotalRecordCount=true`),
+      jellyfinGet(`${base}?IncludeItemTypes=Series&Recursive=true&Limit=0&EnableTotalRecordCount=true`),
+      jellyfinGet(`${base}?IncludeItemTypes=Episode&Recursive=true&Limit=0&EnableTotalRecordCount=true`),
+    ]);
+    return {
+      movies: movies.TotalRecordCount || 0,
+      shows: shows.TotalRecordCount || 0,
+      episodes: episodes.TotalRecordCount || 0,
+    };
+  } catch(e) {
+    console.error('[error] getStats:', e.message);
+    return { movies: 0, shows: 0, episodes: 0 };
+  }
 });
 
 async function getRandomMovie() {
