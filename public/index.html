@@ -83,6 +83,51 @@
     .d-actor-photo{width:56px;height:56px;border-radius:50%;object-fit:cover;border:1px solid rgba(255,255,255,0.08);background:#1a1510;flex-shrink:0;}
     .d-actor-ph{width:56px;height:56px;border-radius:50%;background:#1a1510;border:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;font-size:18px;color:rgba(240,232,213,0.15);}
     .d-actor-name{font-family:'Cormorant Garamond',serif;font-size:10px;color:var(--cream);opacity:0.4;text-align:center;line-height:1.2;word-break:break-word;}
+    #health-btn{position:fixed;bottom:22px;left:22px;z-index:60;width:34px;height:34px;border-radius:50%;background:rgba(10,8,4,0.8);border:1px solid rgba(201,168,76,0.18);color:var(--accent);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 0.4s ease;backdrop-filter:blur(10px);}
+    #health-btn.visible{opacity:0.45;}
+    #health-btn.visible:hover{opacity:1;}
+    #health-overlay{position:fixed;inset:0;z-index:38;background:rgba(5,4,2,0.98);opacity:0;pointer-events:none;transition:opacity 0.3s ease;display:flex;flex-direction:column;overflow-y:auto;}
+    #health-overlay.open{opacity:1;pointer-events:all;}
+    #health-header{display:flex;align-items:center;gap:14px;padding:24px 44px 18px;border-bottom:1px solid rgba(201,168,76,0.06);}
+    #health-back{font-size:8px;letter-spacing:0.25em;text-transform:uppercase;color:var(--accent);opacity:0.5;cursor:pointer;background:none;border:1px solid rgba(201,168,76,0.2);border-radius:4px;padding:5px 11px;transition:opacity 0.2s;}
+    #health-back:hover{opacity:1;}
+    #health-title{font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:0.4em;color:var(--cream);opacity:0.35;}
+    #health-body{padding:28px 44px;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;}
+    .h-card{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:18px 20px;}
+    .h-card-title{font-size:8px;font-weight:700;letter-spacing:0.3em;text-transform:uppercase;color:var(--accent);opacity:0.5;margin-bottom:12px;}
+    .h-stat{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+    .h-stat-label{font-size:10px;color:var(--cream);opacity:0.38;letter-spacing:0.05em;}
+    .h-stat-value{font-size:11px;font-weight:700;color:var(--cream);opacity:0.7;font-family:monospace;}
+    .h-stat-value.good{color:#2ecc71;}
+    .h-stat-value.warn{color:#f39c12;}
+    .h-stat-value.bad{color:#e74c3c;}
+    .h-latency-bar{height:4px;border-radius:2px;background:rgba(255,255,255,0.06);margin-top:4px;overflow:hidden;}
+    .h-latency-fill{height:100%;border-radius:2px;transition:width 0.5s ease;}
+    #health-refresh{margin:0 44px 28px;padding:8px 16px;border:1px solid rgba(201,168,76,0.2);border-radius:4px;background:transparent;color:var(--accent);font-size:8px;letter-spacing:0.3em;text-transform:uppercase;cursor:pointer;opacity:0.6;transition:opacity 0.2s;width:fit-content;}
+    #health-refresh:hover{opacity:1;}
+    #health-activity{padding:0 44px 44px;}
+    .h-activity-title{font-size:8px;font-weight:700;letter-spacing:0.3em;text-transform:uppercase;color:var(--accent);opacity:0.4;margin-bottom:12px;}
+    .h-activity-item{padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04);display:flex;justify-content:space-between;align-items:center;}
+    .h-activity-name{font-size:11px;color:var(--cream);opacity:0.5;}
+    .h-activity-date{font-size:9px;color:var(--cream);opacity:0.25;font-family:monospace;}
+
+    /* ── Fullscreen detail ── */
+    #detail-card.fullscreen{position:fixed;inset:0;width:100vw;max-height:100vh;border-radius:0;flex-direction:column;}
+    #detail-card.fullscreen #detail-poster-wrap{width:100%;height:40vh;flex-shrink:0;}
+    #detail-card.fullscreen #detail-poster{width:100%;height:100%;object-fit:cover;}
+    #detail-fullscreen-btn{position:absolute;top:12px;left:12px;z-index:5;width:26px;height:26px;border-radius:50%;background:rgba(0,0,0,0.6);border:1px solid rgba(255,255,255,0.1);color:rgba(240,232,213,0.5);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.2s;}
+    #detail-fullscreen-btn:hover{background:rgba(0,0,0,0.9);color:var(--cream);}
+
+    /* ── Section order ── */
+    #section-order-panel{position:fixed;inset:0;z-index:62;background:rgba(0,0,0,0.7);display:none;align-items:center;justify-content:center;}
+    #section-order-panel.open{display:flex;}
+    #section-order-card{background:rgba(10,8,4,0.98);border:1px solid rgba(201,168,76,0.15);border-radius:12px;padding:22px;width:280px;max-height:80vh;overflow-y:auto;}
+    .so-title{font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:0.45em;color:var(--accent);opacity:0.6;margin-bottom:14px;}
+    .so-item{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04);cursor:grab;}
+    .so-item:last-child{border-bottom:none;}
+    .so-handle{font-size:14px;color:rgba(240,232,213,0.2);}
+    .so-label{font-size:11px;color:var(--cream);opacity:0.55;flex:1;}
+    .so-close{margin-top:14px;width:100%;padding:8px;border-radius:5px;border:1px solid rgba(255,255,255,0.07);background:rgba(255,255,255,0.03);color:rgba(240,232,213,0.32);font-size:8px;letter-spacing:0.2em;text-transform:uppercase;cursor:pointer;}
     /* Quality badges */
     .quality-badges{position:absolute;top:5px;left:5px;display:flex;flex-direction:column;gap:2px;pointer-events:none;}
     .qbadge{font-size:6px;font-weight:800;letter-spacing:0.1em;padding:2px 5px;border-radius:2px;line-height:1.2;text-transform:uppercase;}
@@ -387,6 +432,7 @@
       </div>
       <div id="detail-info">
         <button id="detail-close">✕</button>
+        <button id="detail-fullscreen-btn">⛶</button>
         <div id="detail-type"></div>
         <div id="detail-title"></div>
         <div id="detail-tagline"></div>
@@ -408,6 +454,28 @@
     </div>
   </div>
 
+
+
+  <!-- Health page -->
+  <button id="health-btn">📡</button>
+  <div id="health-overlay">
+    <div id="health-header">
+      <button id="health-back">← Back</button>
+      <div id="health-title">Server Health</div>
+    </div>
+    <div id="health-body"></div>
+    <button id="health-refresh">↻ Refresh</button>
+    <div id="health-activity"><div class="h-activity-title">Recent Activity</div><div id="health-activity-list"></div></div>
+  </div>
+
+  <!-- Section order -->
+  <div id="section-order-panel">
+    <div id="section-order-card">
+      <div class="so-title">Reorder Sections</div>
+      <div id="so-list"></div>
+      <button class="so-close" id="so-close">Done</button>
+    </div>
+  </div>
 
   <!-- Browse All Movies -->
   <div id="browse-overlay">
@@ -550,7 +618,7 @@
   // Settings panel
   const sBtn=document.getElementById('settings-btn'),sPanel=document.getElementById('settings-panel');
   let sBtnT;
-  function showSBtn(){sBtn.classList.add('visible');document.getElementById('search-btn').classList.add('visible');document.getElementById('browse-btn').classList.add('visible');clearTimeout(sBtnT);sBtnT=setTimeout(()=>{if(!sPanel.classList.contains('open')){sBtn.classList.remove('visible');document.getElementById('search-btn').classList.remove('visible');document.getElementById('browse-btn').classList.remove('visible');}},4000);}
+  function showSBtn(){['settings-btn','search-btn','browse-btn','health-btn'].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.add('visible');});clearTimeout(sBtnT);sBtnT=setTimeout(()=>{if(!sPanel.classList.contains('open')){['settings-btn','search-btn','browse-btn','health-btn'].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.remove('visible');});}},4000);}
   document.addEventListener('mousemove',showSBtn);document.addEventListener('touchstart',showSBtn);showSBtn();
   sBtn.addEventListener('click',()=>{sPanel.classList.toggle('open');sBtn.classList.add('visible');clearTimeout(sBtnT);playSound('click');});
   document.addEventListener('click',e=>{if(!sPanel.contains(e.target)&&e.target!==sBtn){sPanel.classList.remove('open');showSBtn();}});
@@ -693,23 +761,33 @@
     if(item.versionCount>1){const c=document.createElement('div');c.className='d-chip d-chip-p';c.textContent=`${item.versionCount} versions available`;chips.appendChild(c);}
     const cg=document.getElementById('detail-cast-grid');cg.innerHTML='';
     const cl=document.getElementById('detail-cast-label');
-    if(item.cast&&item.cast.length){
+    // Use People array which has Jellyfin image data
+    const people = item.People || item.people || [];
+    const actors = people.filter ? people.filter(p => p.Type === 'Actor').slice(0,8) : [];
+    // Fallback to cast names if no People data
+    const castNames = item.cast || [];
+    if(actors.length || castNames.length){
       cl.style.display='';
-      item.cast.forEach((actor,idx)=>{
-        const wrap=document.createElement('div');wrap.className='d-actor';
-        // Try to load actor photo from TMDB if we have cast with photo data, else show initials
-        const photoKey = (item.castPhotos||item._castPhotos||[])[idx];
-        if(photoKey){
-          const img=document.createElement('img');img.className='d-actor-photo';
-          img.src=`https://image.tmdb.org/t/p/w185${photoKey}`;
-          img.alt=actor;img.onerror=()=>img.replaceWith(mkActorPh(actor));
-          wrap.appendChild(img);
-        } else {
-          wrap.appendChild(mkActorPh(actor));
-        }
-        const name=document.createElement('div');name.className='d-actor-name';name.textContent=actor;wrap.appendChild(name);
-        cg.appendChild(wrap);
-      });
+      if(actors.length){
+        actors.forEach(actor=>{
+          const wrap=document.createElement('div');wrap.className='d-actor';
+          if(actor.PrimaryImageTag){
+            const img=document.createElement('img');img.className='d-actor-photo';
+            img.src=`/api/person-image?id=${actor.Id}`;img.alt=actor.Name||'';
+            img.onerror=()=>img.replaceWith(mkActorPh(actor.Name||'?'));
+            wrap.appendChild(img);
+          } else { wrap.appendChild(mkActorPh(actor.Name||'?')); }
+          const name=document.createElement('div');name.className='d-actor-name';name.textContent=actor.Name||'';wrap.appendChild(name);
+          cg.appendChild(wrap);
+        });
+      } else {
+        castNames.forEach(name=>{
+          const wrap=document.createElement('div');wrap.className='d-actor';
+          wrap.appendChild(mkActorPh(name));
+          const n=document.createElement('div');n.className='d-actor-name';n.textContent=name;wrap.appendChild(n);
+          cg.appendChild(wrap);
+        });
+      }
     } else cl.style.display='none';
     document.getElementById('detail-crew').textContent=item.director?`Directed by ${item.director}`:'';
     const sc=item.score?parseFloat(item.score):0;
@@ -913,7 +991,7 @@
         document.getElementById('pg-rating').textContent=item.OfficialRating||'—';
         document.getElementById('quality-chip').textContent=qLabel(item.MediaStreams)||'—';
         document.getElementById('overview').textContent=item.Overview||'';
-        renderCrew(item.People,director,castPhotos||[]);
+        item.People = item.People || []; renderCrew(item.People,director,castPhotos||[]);
         const sc=item.CommunityRating;document.getElementById('stars').textContent=stars(sc);document.getElementById('rating-val').textContent=sc?`${sc.toFixed(1)} / 10`:'';
         renderQR(trailerKey);
         const un=document.getElementById('up-next');
@@ -986,9 +1064,147 @@
   }
   function mkBcPh() { const el = document.createElement('div'); el.className = 'bc-ph'; el.textContent = 'NO IMG'; return el; }
   document.getElementById('browse-more').addEventListener('click', () => loadBrowse(true));
+  // Auto-load on scroll
+  document.getElementById('browse-grid').addEventListener('scroll', (e) => {
+    const el = e.target;
+    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 200) {
+      if (browseStart < browseTotal && !browseLoading) loadBrowse(true);
+    }
+  });
   document.getElementById('bf-sort').addEventListener('change', e => { browseSort = e.target.value; browseStart = 0; loadBrowse(false); });
   document.getElementById('bf-order').addEventListener('change', e => { browseOrder = e.target.value; browseStart = 0; loadBrowse(false); });
   document.getElementById('bf-genre').addEventListener('change', e => { browseGenre = e.target.value; browseStart = 0; loadBrowse(false); });
+
+
+  // ════ HEALTH PAGE ════
+  const healthOverlay = document.getElementById('health-overlay');
+  document.getElementById('health-btn').addEventListener('click', () => { healthOverlay.classList.add('open'); loadHealth(); playSound('open'); });
+  document.getElementById('health-back').addEventListener('click', () => { healthOverlay.classList.remove('open'); playSound('click'); });
+  document.getElementById('health-refresh').addEventListener('click', () => { loadHealth(); playSound('click'); });
+
+  async function loadHealth() {
+    const body = document.getElementById('health-body');
+    body.innerHTML = '<div style="color:rgba(240,232,213,0.2);font-size:12px;padding:20px;font-style:italic;font-family:Cormorant Garamond,serif;">Loading...</div>';
+    try {
+      const r = await fetch('/api/server-health'); const d = await r.json();
+      if (d.error) { body.innerHTML = `<div style="color:#e74c3c;padding:20px;font-size:12px;">${d.error}</div>`; return; }
+      const latencyClass = d.latency < 50 ? 'good' : d.latency < 200 ? 'warn' : 'bad';
+      const latencyW = Math.min(100, (d.latency / 500) * 100);
+      const latencyColor = d.latency < 50 ? '#2ecc71' : d.latency < 200 ? '#f39c12' : '#e74c3c';
+      body.innerHTML = `
+        <div class="h-card">
+          <div class="h-card-title">Connection</div>
+          <div class="h-stat"><span class="h-stat-label">Latency</span><span class="h-stat-value ${latencyClass}">${d.latency}ms</span></div>
+          <div class="h-latency-bar"><div class="h-latency-fill" style="width:${latencyW}%;background:${latencyColor};"></div></div>
+          <div class="h-stat" style="margin-top:10px"><span class="h-stat-label">Server</span><span class="h-stat-value">${d.serverName||'—'}</span></div>
+          <div class="h-stat"><span class="h-stat-label">Version</span><span class="h-stat-value">${d.version||'—'}</span></div>
+          <div class="h-stat"><span class="h-stat-label">OS</span><span class="h-stat-value">${d.os||'—'}</span></div>
+        </div>
+        <div class="h-card">
+          <div class="h-card-title">Sessions</div>
+          <div class="h-stat"><span class="h-stat-label">Active</span><span class="h-stat-value ${d.activeSessions>0?'good':''}">${d.activeSessions}</span></div>
+          <div class="h-stat"><span class="h-stat-label">Transcoding</span><span class="h-stat-value ${d.transcoding>0?'warn':'good'}">${d.transcoding}</span></div>
+        </div>
+        <div class="h-card">
+          <div class="h-card-title">Network</div>
+          <div class="h-stat"><span class="h-stat-label">Local</span><span class="h-stat-value">${d.localAddress||'—'}</span></div>
+          <div class="h-stat"><span class="h-stat-label">WAN</span><span class="h-stat-value">${d.wanAddress||'—'}</span></div>
+        </div>`;
+      // Activity
+      const actList = document.getElementById('health-activity-list');
+      actList.innerHTML = '';
+      (d.recentActivity||[]).forEach(a => {
+        const el = document.createElement('div'); el.className = 'h-activity-item';
+        el.innerHTML = `<span class="h-activity-name">${a.name||''}</span><span class="h-activity-date">${a.date ? new Date(a.date).toLocaleString() : ''}</span>`;
+        actList.appendChild(el);
+      });
+    } catch(e) { body.innerHTML = `<div style="color:#e74c3c;padding:20px;font-size:12px;">${e.message}</div>`; }
+  }
+
+  // ════ FULLSCREEN DETAIL ════
+  let detailFullscreen = false;
+  document.getElementById('detail-fullscreen-btn').addEventListener('click', () => {
+    const card = document.getElementById('detail-card');
+    detailFullscreen = !detailFullscreen;
+    card.classList.toggle('fullscreen', detailFullscreen);
+    document.getElementById('detail-fullscreen-btn').textContent = detailFullscreen ? '⊡' : '⛶';
+    playSound('click');
+  });
+  // Reset fullscreen on close
+  const origCloseDetail = closeDetail;
+
+  // ════ SECTION REORDER ════
+  const SECTION_DEFS = [
+    {id:'lucky-section', label:'🎲 Feeling Lucky'},
+    {id:'section-continue', label:'Continue Watching'},
+    {id:'section-recent', label:'Recently Added'},
+    {id:'section-popular', label:'Most Popular'},
+    {id:'section-history', label:'Watch History'},
+    {id:'section-onthisday', label:'On This Day'},
+    {id:'section-coming', label:'Coming Soon'},
+  ];
+
+  function loadSectionOrder() {
+    try { return JSON.parse(localStorage.getItem('jp-section-order') || 'null'); } catch { return null; }
+  }
+  function saveSectionOrder(order) { try { localStorage.setItem('jp-section-order', JSON.stringify(order)); } catch {} }
+
+  function applySectionOrder() {
+    const order = loadSectionOrder();
+    if (!order) return;
+    const idle = document.getElementById('idle');
+    const divider = document.querySelector('.idle-divider');
+    order.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) idle.appendChild(el);
+    });
+  }
+  applySectionOrder();
+
+  function openSectionOrder() {
+    const panel = document.getElementById('section-order-panel');
+    panel.classList.add('open');
+    const list = document.getElementById('so-list');
+    list.innerHTML = '';
+    const order = loadSectionOrder() || SECTION_DEFS.map(s => s.id);
+    order.forEach(id => {
+      const def = SECTION_DEFS.find(s => s.id === id);
+      if (!def) return;
+      const item = document.createElement('div'); item.className = 'so-item'; item.dataset.id = id;
+      item.innerHTML = `<span class="so-handle">⠿</span><span class="so-label">${def.label}</span>`;
+      list.appendChild(item);
+    });
+    enableDragSort(list);
+    playSound('open');
+  }
+
+  function enableDragSort(list) {
+    let dragging = null;
+    list.querySelectorAll('.so-item').forEach(item => {
+      item.draggable = true;
+      item.addEventListener('dragstart', () => { dragging = item; item.style.opacity = '0.4'; });
+      item.addEventListener('dragend', () => { item.style.opacity = '1'; dragging = null; saveSortOrder(list); });
+      item.addEventListener('dragover', e => { e.preventDefault(); if (dragging && dragging !== item) { const rect = item.getBoundingClientRect(); const mid = rect.top + rect.height/2; if (e.clientY < mid) list.insertBefore(dragging, item); else list.insertBefore(dragging, item.nextSibling); } });
+    });
+  }
+
+  function saveSortOrder(list) {
+    const order = Array.from(list.querySelectorAll('.so-item')).map(i => i.dataset.id);
+    saveSectionOrder(order);
+    applySectionOrder();
+  }
+
+  document.getElementById('so-close').addEventListener('click', () => { document.getElementById('section-order-panel').classList.remove('open'); });
+  document.getElementById('section-order-panel').addEventListener('click', e => { if (e.target === document.getElementById('section-order-panel')) document.getElementById('section-order-panel').classList.remove('open'); });
+
+  // Add reorder button to settings layout tab
+  const soBtn = document.createElement('button'); soBtn.className = 'sp-btn'; soBtn.textContent = 'Reorder Sections ↕';
+  soBtn.addEventListener('click', openSectionOrder);
+  const layoutTab = document.getElementById('tab-layout');
+  if (layoutTab) layoutTab.insertBefore(soBtn, layoutTab.firstChild);
+
+  // ════ FIX ACTOR PHOTOS — use Jellyfin people images ════
+  // Jellyfin has actor images already! Use them directly.
 
   // ════ POLL ════
   async function poll(){try{const r=await fetch('/api/now-playing');const d=await r.json();if(d){lastWasPlaying=true;showNowPlaying(d);}else{if(lastWasPlaying||!isIdle)showIdle();lastWasPlaying=false;}}catch(e){}}

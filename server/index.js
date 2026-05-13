@@ -61,7 +61,6 @@ function qualityFromVideo(video) {
   if (!video) return null;
   const w = video.Width || 0;
   const h = video.Height || 0;
-  // Use width as primary indicator (handles 2.40:1 crops where height < 2160)
   if (w >= 3840 || h >= 2160) return '4K';
   if (w >= 1920 || h >= 1080) return '1080p';
   if (w >= 1280 || h >= 720) return '720p';
@@ -69,21 +68,29 @@ function qualityFromVideo(video) {
   return null;
 }
 
-// ── Quality label from media streams + sources ──
+// ── Check if source is 3D ──
+function is3DSource(streams, source) {
+  if (!streams && !source) return false;
+  if (streams && streams.some(s => s.Video3DFormat)) return true;
+  const name = (source && source.Name) || '';
+  const path = (source && source.Path) || '';
+  return /3d|hsbs|h-sbs|half.sbs|mvc/i.test(name) || /3d|hsbs|h-sbs|half.sbs|mvc/i.test(path);
+}
+
+// ── Returns array of quality tags for a single source ──
+function qualitiesFromSource(streams, source) {
+  const tags = [];
+  const video = streams && streams.find(s => s.Type === 'Video');
+  const res = qualityFromVideo(video);
+  if (res) tags.push(res);
+  if (is3DSource(streams, source)) tags.push('3D');
+  return tags;
+}
+
+// ── Quality label from media streams + sources (legacy single value) ──
 function qualityFromStreams(streams, mediaSources) {
-  if (!streams) return null;
-  const video = streams.find(s => s.Type === 'Video');
-  // 3D detection: Video3DFormat field, or HSBS/3D in filename/title
-  const is3D = (
-    (video && video.Video3DFormat) ||
-    streams.some(s => s.Video3DFormat) ||
-    (mediaSources && mediaSources.some(src =>
-      /3d|hsbs|sbs|half.sbs|mvc/i.test(src.Name || '') ||
-      /3d|hsbs|sbs|half.sbs|mvc/i.test(src.Path || '')
-    ))
-  );
-  if (is3D) return '3D';
-  return qualityFromVideo(video);
+  const tags = qualitiesFromSource(streams, mediaSources && mediaSources[0]);
+  return tags[0] || null;
 }
 
 // ── Audio label — checks AudioSpatialFormat first ──
@@ -145,21 +152,20 @@ function deduplicateMovies(items) {
 
 // ── Map Jellyfin item to standard shape with quality + audio ──
 function mapItem(i) {
-  // Collect qualities from all media sources if available
-  let qualities = [];
-  if (i.MediaSources && i.MediaSources.length > 1) {
+  // Collect qualities from all media sources
+  const qOrder = ['4K','1080p','720p','480p','3D'];
+  const qualitySet = new Set();
+  if (i.MediaSources && i.MediaSources.length > 0) {
     i.MediaSources.forEach(src => {
-      const q = qualityFromStreams(src.MediaStreams, [src]);
-      if (q && !qualities.includes(q)) qualities.push(q);
+      qualitiesFromSource(src.MediaStreams, src).forEach(q => qualitySet.add(q));
     });
-    // Sort: 4K, 3D, 1080p, 720p, 480p
-    const order = ['4K','3D','1080p','720p','480p'];
-    qualities.sort((a,b) => order.indexOf(a) - order.indexOf(b));
   } else {
-    const q = qualityFromStreams(i.MediaStreams, i.MediaSources);
-    if (q) qualities = [q];
+    qualitiesFromSource(i.MediaStreams, null).forEach(q => qualitySet.add(q));
   }
+  // Sort by priority
+  let qualities = Array.from(qualitySet).sort((a,b) => qOrder.indexOf(a) - qOrder.indexOf(b));
   const audio = audioFromStreams(i.MediaStreams);
+  const people = i.People || [];
   return {
     id: i.Id, title: i.Name, year: i.ProductionYear,
     genre: (i.Genres || []).slice(0, 2).join(' / '),
@@ -167,8 +173,13 @@ function mapItem(i) {
     overview: i.Overview,
     qualities,
     audio: audio || null,
-    cast: (i.People || []).filter(p => p.Type === 'Actor').slice(0, 5).map(p => p.Name),
-    director: (i.People || []).find(p => p.Type === 'Director') ? (i.People || []).find(p => p.Type === 'Director').Name : null,
+    cast: people.filter(p => p.Type === 'Actor').slice(0, 8).map(p => p.Name),
+    People: people.filter(p => p.Type === 'Actor').slice(0, 8).map(p => ({
+      Id: p.Id, Name: p.Name, Type: p.Type,
+      Role: p.Role, PrimaryImageTag: p.PrimaryImageTag || null,
+    })),
+    director: people.find(p => p.Type === 'Director') ? people.find(p => p.Type === 'Director').Name : null,
+    tagline: i.Taglines ? (i.Taglines[0] || '') : '',
     posterUrl: posterUrl(i.Id), backdropUrl: backdropUrl(i.Id),
   };
 }
@@ -438,13 +449,58 @@ const server = http.createServer(async (req, res) => {
     '/api/all-movies': async () => JSON.stringify(await getAllMovies(parsed.query.sort, parsed.query.order, parsed.query.genre, parsed.query.minYear, parsed.query.maxYear, parseInt(parsed.query.start || '0'))),
     '/api/genres': async () => JSON.stringify(await getAllGenres()),
     '/api/weather': async () => JSON.stringify(await getWeather(parsed.query.city || '')),
+    '/api/person-image': async () => {
+      const personId = parsed.query.id;
+      if (!personId) { res.writeHead(400); return '{}'; }
+      // Redirect to Jellyfin person image
+      const imgUrl = `${JELLYFIN_URL}/Items/${personId}/Images/Primary?maxWidth=185&api_key=${JELLYFIN_API_KEY}`;
+      res.writeHead(302, { 'Location': imgUrl });
+      return null;
+    },
+    '/api/jellyfin-url': async () => JSON.stringify({ url: JELLYFIN_URL, key: JELLYFIN_API_KEY }),
+    '/api/storage': async () => {
+      try {
+        const libraries = await jellyfinGet('/Library/VirtualFolders');
+        return JSON.stringify(libraries || []);
+      } catch(e) { return JSON.stringify([]); }
+    },
     '/health': async () => JSON.stringify({ status: 'ok', jellyfin: JELLYFIN_URL, tmdb: !!TMDB_API_KEY }),
+    '/api/server-health': async () => {
+      const start = Date.now();
+      try {
+        const [info, sessions, activity] = await Promise.all([
+          jellyfinGet('/System/Info'),
+          jellyfinGet('/Sessions'),
+          jellyfinGet('/System/ActivityLog/Entries?Limit=5'),
+        ]);
+        const latency = Date.now() - start;
+        const activeSessions = sessions.filter(s => s.NowPlayingItem).length;
+        const transcoding = sessions.filter(s => s.TranscodingInfo && s.NowPlayingItem).length;
+        return JSON.stringify({
+          latency,
+          serverName: info.ServerName,
+          version: info.Version,
+          os: info.OperatingSystem,
+          activeSessions,
+          transcoding,
+          uptime: info.StartupWizardCompleted,
+          localAddress: info.LocalAddress,
+          wanAddress: info.WanAddress,
+          recentActivity: (activity.Items || []).slice(0,5).map(a => ({
+            name: a.Name, date: a.Date, severity: a.Severity,
+          })),
+        });
+      } catch(e) {
+        return JSON.stringify({ error: e.message, latency: Date.now() - start });
+      }
+    },
   };
 
   if (routes[pathname]) {
     try {
       const body = await routes[pathname]();
-      res.writeHead(200, { 'Content-Type': 'application/json' });
+      if (body === null) { res.end(); return; }  // handled (redirect etc)
+      if (!res.headersSent) res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(body);
     } catch (e) {
       res.writeHead(500, { 'Content-Type': 'application/json' });
