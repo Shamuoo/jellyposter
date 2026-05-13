@@ -1,93 +1,144 @@
 # 🎬 JellyPoster
 
-A cinema-style home theater display for Jellyfin. Shows what's currently playing on a dedicated screen — movie poster, metadata, cast, progress bar, and more. Designed to run on a TV, monitor, Raspberry Pi, or any browser on your network.
+A cinema-style home theater display and library management tool for Jellyfin. Shows what's currently playing on a dedicated screen, and provides a full suite of tools to manage and maintain your media library.
 
 > **Note:** This project was entirely AI-coded (Claude by Anthropic) as a personal home theater side project. Shared as-is — use it, fork it, break it.
 
+
+
+---
 
 ## Features
 
 ### 🎬 Now Playing
 - Full-screen movie poster with blurred backdrop
-- Title, tagline, genre, runtime, age rating, quality badge (4K / 1080p / 720p / 3D)
+- Title, tagline, genre, runtime, age rating
+- Quality badges — **4K**, **1080p**, **720p**, **SD** (uses width for widescreen accuracy)
+- **3D detection** — `1080p 3D`, `4K 3D` etc (detects HSBS, SBS, MVC filenames)
+- Audio badges — **Atmos**, **DTS:X**, **TrueHD**, **DTS-HD MA**, **DD+**, **DD**, **AAC** etc
+- Version badges — `×2` when multiple versions exist
 - Synopsis, director, cast
 - Community rating with star display
-- Live progress bar with elapsed / total time
+- Live progress bar
 - **Paused state** — dims screen with ⏸ indicator
 - **TV show support** — series name + S01E01 format
 - **Up Next** card for TV episodes
-- **Trailer QR code** — scan with phone to open YouTube
-- **Multi-room display** — shows all active Jellyfin sessions
-- Who's watching shown in top bar
-- Back button → returns to home screen
-- Cinema sound effect when playback starts
+- **Trailer QR code** — scan to open YouTube trailer
+- **Multi-room** — shows all active Jellyfin sessions
+- Who's watching in top bar
+- ← Back button to home screen
+- Cinematic sound effect on playback start
 
 ### 🏠 Home / Idle Screen
-- 🎬 Logo, clock, date
-- **Library stats** — total movies, shows, episodes
+- Logo, clock, date
+- **Library stats** — movies, shows, episodes
 - **Weather widget** — set your city in settings
-- **🎲 Feeling Lucky** — random movie suggestion, click to refresh
-- **Continue Watching** row with progress bars
-- **Recently Added** row
-- **Most Popular** row (only shows actually-played movies)
-- **Watch History** row
-- **On This Day** — movies released today in past years (TMDB, popular only)
-- **Coming Soon** row (TMDB)
+- **🎲 Feeling Lucky** — random movie, click to refresh
+- **Continue Watching** with progress bars
+- **Recently Added**
+- **Most Popular** (by community rating)
+- **Watch History**
+- **On This Day** — movies released today in history (TMDB, popular only)
+- **Coming Soon** (TMDB)
+- **Customisable section order** — drag to reorder in settings
 - Click any poster → full detail view
 
 ### 🔍 Search
-- Search your entire Jellyfin library instantly
-- Shows poster, year, genre, overview
+- Searches your entire Jellyfin library
+- Poster, year, genre, overview
 - Click result → detail view
 
 ### 🎞 Browse All Movies
-- Full library grid, 48 at a time with Load More
-- Sort by: A–Z, Year, Rating, Date Added, Most Played
-- Filter by Genre (auto-populated from your library)
-- Ascending / Descending toggle
+- Full library grid with infinite scroll
+- Sort by A–Z, Year, Rating, Date Added, Most Played
+- Filter by Genre
+- Quality + audio badges on every poster
 - Click any poster → detail view
 
 ### 🏷 Quality Badges & Version Grouping
-- Every poster card shows quality badges: **4K**, **1080p**, **720p**, **3D**, **480p**
-- Duplicate movies (same title/year in multiple versions) are grouped into one card
-- Grouped cards show all available quality tags + a **×2** version count badge
-- Detail view shows "2 versions available" chip
+- Quality badges on every poster: **4K**, **1080p**, **720p**, **3D** (green), **480p**
+- 3D combined: `1080p 3D`, `4K 3D`
+- Duplicate movies grouped — all quality tags shown + `×2` version count
+- Detail view shows quality chips, audio, version count
 
 ### 🖼 Poster Detail View
 - Large poster, full overview, tagline
-- Complete cast grid, director
-- Rating stars + score
-- Quality chips + version count
-- Release date
-- Trailer QR code (TMDB)
+- Complete cast with circular actor photos (from Jellyfin)
+- Director, rating stars, score
+- Quality + audio chips, version count
+- Release date, trailer QR code
+- Collapsible technical details (Jellyfin ID, quality, audio, versions)
+- ⛶ Fullscreen toggle
+
+### 🔧 Library Tools (v0.8)
+Full library management page — 🔧 button bottom right.
+
+**Overview** — health dashboard showing all issues at a glance
+
+**Quality Issues**
+- SD / 480p movies
+- 720p upgrade candidates
+- Poor audio (no surround sound)
+- Files with no media streams
+
+**Missing Content**
+- Missing posters (with auto-fix button)
+- Missing backdrops
+- Missing overview / description
+
+**Versions & 3D**
+- All multi-version movies
+- Your complete 3D library
+- 2D-only movies (no 3D counterpart)
+
+**Music**
+- Album and track counts
+- Albums missing artwork with fix buttons
+
+**Quick Actions**
+- Scan all libraries
+- Fix all missing images (auto)
+- Refresh metadata per item
+- Full scan report
+
+### 📡 Server Health
+Health page with full Jellyfin diagnostics:
+- Latency with colour indicator
+- Server name, version, OS, architecture
+- Update available check (from Jellyfin)
+- **GitHub release check** — shows if JellyPoster is up to date
+- Active sessions with who's watching, progress, paused state
+- Transcoding details — direct/transcode, codec, bitrate
+- All libraries with paths
+- Connected devices count
+- Plugins list
+- Recent activity log with error/warning colouring
 
 ### 🌌 Screensaver
-- Cycles through recently added movie backdrops fullscreen
-- Shows title, genre, synopsis
-- Progress bar per slide
-- Tap to dismiss
+- Cycles through recently added backdrops
+- Title, genre, synopsis overlay
+- Progress bar, tap to dismiss
+- Configurable delay
 
 ### 🔔 Notifications
-- Toast popup when a new movie is added to Jellyfin
-- Confetti animation on new arrival
-- Both toggleable in settings
+- Toast popup on new movie arrival
+- Confetti animation
+- Both toggleable
 
 ### 🔊 Sounds
-- Subtle UI click sounds
-- Cinematic rising tone when playback starts
-- All toggleable in settings
+- UI click sounds
+- Cinematic tone on playback start
+- All toggleable
 
 ### ⚙ Settings Panel
-Appears on mouse move (auto-hides). Four tabs:
+⚙ button appears on mouse move (auto-hides). Four tabs:
 
 | Tab | Options |
 |---|---|
 | **Style** | Accent colour, quality badge colour, title font |
-| **Layout** | Toggle every home section on/off individually |
-| **Display** | Screensaver delay, auto-dim timer, 12hr clock, sounds, notifications |
+| **Layout** | Toggle every home section, drag to reorder |
+| **Display** | Screensaver delay, auto-dim, 12hr clock, sounds, notifications |
 | **Content** | Weather city + units, trailer QR, up next, who's watching, multi-room, back button |
-
-Settings persist in browser localStorage.
 
 ---
 
@@ -144,8 +195,8 @@ git pull
 docker restart jellyposter
 ```
 
-Frontend changes (`index.html`) take effect on browser refresh.
-Backend changes (`server/index.js`) need `docker restart jellyposter`.
+Frontend changes (`index.html`) — refresh browser.
+Backend changes (`server/index.js`) — `docker restart jellyposter`.
 
 ---
 
@@ -153,7 +204,7 @@ Backend changes (`server/index.js`) need `docker restart jellyposter`.
 
 | Device | How |
 |---|---|
-| Any browser | Navigate to `http://server:3000` → F11 fullscreen |
+| Any browser | `http://server:3000` → F11 fullscreen |
 | Raspberry Pi | `chromium-browser --kiosk http://server:3000` |
 | Smart TV | Open browser and navigate |
 
@@ -176,7 +227,7 @@ Exec=chromium-browser --kiosk --noerrdialogs --disable-infobars http://localhost
 | `JELLYFIN_API_KEY` | ✅ | From Jellyfin Dashboard → API Keys |
 | `TMDB_API_KEY` | ⬜ | For Coming Soon, On This Day, trailer QR |
 | `PORT` | ⬜ | Port (default: 3000) |
-| `POLL_INTERVAL_MS` | ⬜ | Polling interval in ms (default: 4000) |
+| `POLL_INTERVAL_MS` | ⬜ | Polling interval ms (default: 4000) |
 
 ---
 
@@ -184,11 +235,11 @@ Exec=chromium-browser --kiosk --noerrdialogs --disable-infobars http://localhost
 
 | Endpoint | Description |
 |---|---|
-| `/api/now-playing` | Current playback session |
-| `/api/recently-added` | Latest movies (deduped) |
+| `/api/now-playing` | Current playback |
+| `/api/recently-added` | Latest movies (deduped, quality tagged) |
 | `/api/coming-soon` | Upcoming from TMDB |
 | `/api/continue-watching` | In-progress items |
-| `/api/popular` | Most played movies |
+| `/api/popular` | Highest rated available movies |
 | `/api/history` | Recently watched |
 | `/api/on-this-day` | Movies released today in history |
 | `/api/stats` | Library counts |
@@ -198,6 +249,15 @@ Exec=chromium-browser --kiosk --noerrdialogs --disable-infobars http://localhost
 | `/api/all-movies` | Paginated full library with filters |
 | `/api/genres` | All movie genres |
 | `/api/weather?city=Brisbane` | Current weather |
+| `/api/server-health` | Full server diagnostics + GitHub release |
+| `/api/library/scan` | Trigger library scan |
+| `/api/library/quality-report` | Quality issue report |
+| `/api/library/missing-content` | Missing images/metadata report |
+| `/api/library/versions-report` | Version and 3D report |
+| `/api/library/music-report` | Music library report |
+| `/api/library/refresh-metadata?id=` | Refresh item metadata |
+| `/api/library/refresh-images?id=` | Refresh item images |
+| `/api/person-image?id=` | Actor photo proxy |
 | `/health` | Server health check |
 
 ---
@@ -207,8 +267,8 @@ Exec=chromium-browser --kiosk --noerrdialogs --disable-infobars http://localhost
 - **Backend:** Node.js (zero npm dependencies — pure stdlib)
 - **Frontend:** Vanilla HTML/CSS/JS
 - **Fonts:** Google Fonts (Montserrat, Cormorant Garamond, Bebas Neue, Playfair Display, Inter)
-- **APIs:** Jellyfin REST API, TMDB API, wttr.in
-- **Containerised:** Docker
+- **APIs:** Jellyfin REST API, TMDB API, wttr.in, GitHub API
+- **Container:** Docker
 
 ---
 
