@@ -78,17 +78,22 @@ function is3DSource(streams, source) {
 }
 
 // ── Returns array of quality tags for a single source ──
+// 3D and resolution are combined: "1080p 3D", "4K 3D" etc
 function qualitiesFromSource(streams, source) {
-  const tags = [];
   const video = streams && streams.find(s => s.Type === 'Video');
   const is3D = is3DSource(streams, source);
-  if (!is3D) {
-    // Only add resolution if not 3D (3D sources often report inflated resolution due to SBS)
-    const res = qualityFromVideo(video);
-    if (res) tags.push(res);
+  if (is3D) {
+    // For 3D SBS sources, width is doubled — halve it for true resolution
+    const w = video ? Math.floor((video.Width || 0) / 2) : 0;
+    const h = video ? (video.Height || 0) : 0;
+    let res = null;
+    if (w >= 1920 || h >= 1080) res = '1080p';
+    else if (w >= 1280 || h >= 720) res = '720p';
+    else if (w >= 3840) res = '4K'; // full SBS 4K is very wide
+    return [res ? `${res} 3D` : '3D'];
   }
-  if (is3D) tags.push('3D');
-  return tags;
+  const res = qualityFromVideo(video);
+  return res ? [res] : [];
 }
 
 // ── Quality label from media streams + sources (legacy single value) ──
@@ -157,17 +162,24 @@ function deduplicateMovies(items) {
 // ── Map Jellyfin item to standard shape with quality + audio ──
 function mapItem(i) {
   // Collect qualities from all media sources
-  const qOrder = ['4K','1080p','720p','480p','3D'];
+  const qOrder = ['4K','1080p 3D','1080p','720p 3D','720p','480p 3D','480p','3D'];
   const qualitySet = new Set();
-  if (i.MediaSources && i.MediaSources.length > 0) {
-    i.MediaSources.forEach(src => {
+  const sources = i.MediaSources && i.MediaSources.length > 0 ? i.MediaSources : null;
+  if (sources) {
+    sources.forEach(src => {
       qualitiesFromSource(src.MediaStreams, src).forEach(q => qualitySet.add(q));
     });
   } else {
     qualitiesFromSource(i.MediaStreams, null).forEach(q => qualitySet.add(q));
   }
   // Sort by priority
-  let qualities = Array.from(qualitySet).sort((a,b) => qOrder.indexOf(a) - qOrder.indexOf(b));
+  let qualities = Array.from(qualitySet).sort((a,b) => {
+    const ai = qOrder.findIndex(q => a.includes(q.replace(' 3D','')) || a === q);
+    const bi = qOrder.findIndex(q => b.includes(q.replace(' 3D','')) || b === q);
+    return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+  });
+  // versionCount from MediaSources
+  const versionCount = sources ? sources.filter(s => s.Type !== 'Grouping' || true).length : 1;
   const audio = audioFromStreams(i.MediaStreams);
   const people = i.People || [];
   return {
@@ -184,6 +196,7 @@ function mapItem(i) {
     })),
     director: people.find(p => p.Type === 'Director') ? people.find(p => p.Type === 'Director').Name : null,
     tagline: i.Taglines ? (i.Taglines[0] || '') : '',
+    versionCount: typeof versionCount !== 'undefined' ? versionCount : 1,
     posterUrl: posterUrl(i.Id), backdropUrl: backdropUrl(i.Id),
   };
 }
@@ -338,7 +351,7 @@ const getPopular = cached('popular', 30 * 60 * 1000, async () => {
 const getWatchHistory = cached('history', 5 * 60 * 1000, async () => {
   const userId = await getAdminUserId();
   if (!userId) return [];
-  const data = await jellyfinGet(`/Users/${userId}/Items?SortBy=DatePlayed&SortOrder=Descending&Filters=IsPlayed&IncludeItemTypes=Movie&Recursive=true&Limit=24&fields=Overview,Genres,ProductionYear,OfficialRating,CommunityRating,UserData,MediaStreams`);
+  const data = await jellyfinGet(`/Users/${userId}/Items?SortBy=DatePlayed&SortOrder=Descending&Filters=IsPlayed&IncludeItemTypes=Movie&Recursive=true&Limit=24&fields=Overview,Genres,ProductionYear,OfficialRating,CommunityRating,UserData,MediaStreams,MediaSources`);
   const items = (data.Items || []).map(i => ({ ...mapItem(i), playedDate: i.UserData ? i.UserData.LastPlayedDate : null }));
   return deduplicateMovies(items).slice(0, 12);
 });
@@ -371,11 +384,15 @@ const getOnThisDay = cached('onthisday', 60 * 60 * 1000, async () => {
 
 const getStats = cached('stats', 10 * 60 * 1000, async () => {
   const [movies, shows, episodes] = await Promise.all([
-    jellyfinGet('/Items?IncludeItemTypes=Movie&Recursive=true&Limit=0'),
-    jellyfinGet('/Items?IncludeItemTypes=Series&Recursive=true&Limit=0'),
-    jellyfinGet('/Items?IncludeItemTypes=Episode&Recursive=true&Limit=0'),
+    jellyfinGet('/Items?IncludeItemTypes=Movie&Recursive=true&Limit=0&EnableTotalRecordCount=true'),
+    jellyfinGet('/Items?IncludeItemTypes=Series&Recursive=true&Limit=0&EnableTotalRecordCount=true'),
+    jellyfinGet('/Items?IncludeItemTypes=Episode&Recursive=true&Limit=0&EnableTotalRecordCount=true'),
   ]);
-  return { movies: movies.TotalRecordCount || 0, shows: shows.TotalRecordCount || 0, episodes: episodes.TotalRecordCount || 0 };
+  return {
+    movies: movies.TotalRecordCount || 0,
+    shows: shows.TotalRecordCount || 0,
+    episodes: episodes.TotalRecordCount || 0,
+  };
 });
 
 async function getRandomMovie() {
@@ -504,6 +521,7 @@ const server = http.createServer(async (req, res) => {
         const transcoding = activeSessions.filter(s => s.TranscodingInfo);
         return JSON.stringify({
           latency,
+          jellyPosterVersion: 'v0.7.2',
           serverName: info.ServerName,
           version: info.Version,
           os: info.OperatingSystem,

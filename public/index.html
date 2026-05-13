@@ -873,7 +873,7 @@
   function fmtDate(d){return d?new Date(d).toLocaleDateString([],{month:'short',day:'numeric',year:'numeric'}):''}
 
   // ════ POSTER CARDS ════
-  function qBadgeClass(q){if(q==='4K'||q==='4K UHD')return'qbadge-4k';if(q==='1080p')return'qbadge-1080';if(q==='720p')return'qbadge-720';if(q==='3D')return'qbadge-3d';return'qbadge-480';}
+  function qBadgeClass(q){if(q.startsWith('4K'))return'qbadge-4k';if(q.includes('1080'))return'qbadge-1080';if(q.includes('720'))return'qbadge-720';if(q==='3D'||q.includes('3D'))return'qbadge-3d';return'qbadge-480';}
   function mkQualityBadges(qualities,versionCount,audio){
     const hasContent=((qualities&&qualities.length)||(versionCount>1)||audio);
     if(!hasContent)return null;
@@ -896,7 +896,7 @@
   }
   function mkCard(data,type){
     const card=document.createElement('div');card.className='poster-card';
-    card.addEventListener('click',()=>{openDetail({...data,type:type||data.type||'Movie'});playSound('open');});
+    const _d=JSON.parse(JSON.stringify(data));const _t=type||data.type||'Movie';card.addEventListener('click',()=>{openDetail({..._d,type:_t});playSound('open');});
     const imgWrap=document.createElement('div');imgWrap.style.cssText='position:relative;pointer-events:none;';
     if(data.posterUrl){const img=document.createElement('img');img.className='poster-card-img';img.src=data.posterUrl;img.alt=data.title||'';img.onerror=()=>img.replaceWith(mkPh());imgWrap.appendChild(img);}
     else imgWrap.appendChild(mkPh());
@@ -1045,7 +1045,7 @@
       if (!append) grid.innerHTML = '';
       (data.items || []).forEach(item => {
         const card = document.createElement('div'); card.className = 'bc';
-        const itemCopy = {...item};
+        const itemCopy = JSON.parse(JSON.stringify(item));
         card.addEventListener('click', (e) => { e.stopPropagation(); openDetail(itemCopy); playSound('open'); });
         const bWrap = document.createElement('div'); bWrap.style.cssText = 'position:relative;pointer-events:none;';
         if (item.posterUrl) {
@@ -1097,6 +1097,7 @@
           <div class="h-card-title">Connection</div>
           ${hstat('Latency', d.latency+'ms', lc)}
           <div class="h-latency-bar"><div class="h-latency-fill" style="width:${lw}%;background:${lcol};"></div></div>
+          ${hstat('JellyPoster', d.jellyPosterVersion||'v0.7.2')}
           ${hstat('Server', d.serverName)}
           ${hstat('Version', d.version)}
           ${hstat('OS', d.os)}
