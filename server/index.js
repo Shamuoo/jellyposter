@@ -201,6 +201,14 @@ function mapItem(i) {
   };
 }
 
+
+// ── Quality thresholds (configurable) ──
+const qualityThresholds = {
+  sd: '720p',        // anything below this is flagged as SD/bad
+  upgrade: '1080p',  // anything below this is flagged as upgrade candidate  
+  audio: 'DD',       // anything below this quality is flagged as poor audio
+};
+
 // ── Admin user ──
 let adminUserId = null;
 async function getAdminUserId() {
@@ -672,6 +680,109 @@ const server = http.createServer(async (req, res) => {
   const pathname = parsed.pathname;
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  // Handle OPTIONS preflight
+  if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
+
+  // Handle POST for metadata update
+  if (req.method === 'POST' && pathname === '/api/library/update-item') {
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', async () => {
+      try {
+        const { itemId, updates } = JSON.parse(body);
+        if (!itemId || !updates) { res.writeHead(400); res.end(JSON.stringify({ error: 'Missing itemId or updates' })); return; }
+        // Get current item first
+        const current = await jellyfinGet(`/Items/${itemId}?fields=Overview,Taglines,Genres,OfficialRating,ProductionYear,People,Studios,Tags,ProviderIds,DateCreated,PremiereDate`);
+        // Merge updates
+        const merged = { ...current, ...updates };
+        // POST to Jellyfin
+        const postUrl = `${JELLYFIN_URL}/Items/${itemId}`;
+        const postParsed = new url.URL(postUrl);
+        const postLib = postParsed.protocol === 'https:' ? https : http;
+        const postBody = JSON.stringify(merged);
+        const postReq = postLib.request({
+          hostname: postParsed.hostname,
+          port: postParsed.port || (postParsed.protocol === 'https:' ? 443 : 80),
+          path: postParsed.pathname,
+          method: 'POST',
+          headers: {
+            'X-Emby-Authorization': `MediaBrowser Token="${JELLYFIN_API_KEY}"`,
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(postBody),
+          },
+          timeout: 8000,
+        }, (postRes) => {
+          res.writeHead(postRes.statusCode === 204 ? 200 : postRes.statusCode, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: postRes.statusCode === 204, status: postRes.statusCode }));
+        });
+        postReq.on('error', e => { res.writeHead(500); res.end(JSON.stringify({ error: e.message })); });
+        postReq.write(postBody);
+        postReq.end();
+      } catch(e) { res.writeHead(500); res.end(JSON.stringify({ error: e.message })); }
+    });
+    return;
+  }
+
+  // Handle POST for AI fix via Anthropic API
+  if (req.method === 'POST' && pathname === '/api/library/ai-autofix') {
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', async () => {
+      try {
+        const { itemId } = JSON.parse(body);
+        const item = await jellyfinGet(`/Items/${itemId}?fields=Overview,Taglines,Genres,OfficialRating,ProductionYear,People`);
+        const prompt = `You are a movie database assistant. Fix and improve this movie metadata. Respond ONLY with valid JSON, no markdown fences.
+
+Movie: "${item.Name}" (${item.ProductionYear || 'year unknown'})
+Current overview: ${item.Overview || 'MISSING'}
+Current tagline: ${(item.Taglines||[])[0] || 'MISSING'}  
+Genres: ${(item.Genres||[]).join(', ') || 'MISSING'}
+Rating: ${item.OfficialRating || 'MISSING'}
+
+Return JSON with these fields (keep existing values if already good, improve if poor/missing):
+{"overview":"engaging 2-3 sentence overview, no spoilers","tagline":"short memorable tagline","issues":["issue1","issue2"],"confidence":0.9}`;
+
+        const aiParsed = new url.URL('https://api.anthropic.com/v1/messages');
+        const aiBody = JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 512,
+          messages: [{ role: 'user', content: prompt }],
+        });
+        const aiReq = https.request({
+          hostname: 'api.anthropic.com',
+          path: '/v1/messages',
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'anthropic-version': '2023-06-01',
+            'Content-Length': Buffer.byteLength(aiBody),
+          },
+          timeout: 15000,
+        }, (aiRes) => {
+          let aiRespBody = '';
+          aiRes.on('data', c => aiRespBody += c);
+          aiRes.on('end', () => {
+            try {
+              const aiData = JSON.parse(aiRespBody);
+              const text = aiData.content && aiData.content[0] && aiData.content[0].text || '{}';
+              const cleaned = text.replace(/```json|```/g, '').trim();
+              const suggestion = JSON.parse(cleaned);
+              res.writeHead(200, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ success: true, itemId, title: item.Name, suggestion }));
+            } catch(e) { res.writeHead(500); res.end(JSON.stringify({ error: 'AI parse error: ' + e.message })); }
+          });
+        });
+        aiReq.on('error', e => { res.writeHead(500); res.end(JSON.stringify({ error: e.message })); });
+        aiReq.write(aiBody);
+        aiReq.end();
+      } catch(e) { res.writeHead(500); res.end(JSON.stringify({ error: e.message })); }
+    });
+    return;
+  }
+
 
   const routes = {
     '/api/now-playing': async () => JSON.stringify(await getNowPlaying() || null),
@@ -789,11 +900,15 @@ const server = http.createServer(async (req, res) => {
       (noQuality.Items || []).forEach(item => {
         const q = getVideoQuality(item.MediaStreams);
         const a = getAudioQuality(item.MediaStreams);
+        const qualityOrder = ['4K','1080p','720p','SD',null];
+        const itemQualityRank = qualityOrder.indexOf(q);
+        const sdRank = qualityOrder.indexOf(qualityThresholds.sd);
+        const upgradeRank = qualityOrder.indexOf(qualityThresholds.upgrade);
         if (!item.MediaStreams || !item.MediaStreams.length) {
           noStreamItems.push({ id: item.Id, title: item.Name, year: item.ProductionYear, posterUrl: posterUrl(item.Id) });
-        } else if (q === 'SD') {
+        } else if (q && itemQualityRank >= sdRank) {
           sdItems.push({ id: item.Id, title: item.Name, year: item.ProductionYear, quality: q, audio: a, posterUrl: posterUrl(item.Id) });
-        } else if (q === '720p') {
+        } else if (q && itemQualityRank >= upgradeRank && itemQualityRank < sdRank) {
           hd720Items.push({ id: item.Id, title: item.Name, year: item.ProductionYear, quality: q, audio: a, posterUrl: posterUrl(item.Id) });
         }
         if (q && q !== 'SD' && !goodAudioFormats.includes(a)) {
@@ -867,6 +982,152 @@ const server = http.createServer(async (req, res) => {
         .map(a => ({ id: a.Id, title: a.Name, artist: a.AlbumArtist, year: a.ProductionYear, posterUrl: posterUrl(a.Id) }));
       return JSON.stringify({ totalAlbums: albums.TotalRecordCount || (albums.Items||[]).length, totalTracks: tracks.TotalRecordCount || 0, missingArt });
     },
+
+    // ── SYSTEM STATS ──
+    '/api/system-stats': async () => {
+      const stats = {};
+      try {
+        // CPU usage from /proc/stat
+        const fs2 = require('fs');
+        const cpu1 = fs2.readFileSync('/proc/stat', 'utf8').split('\n')[0].split(' ').slice(1).map(Number);
+        await new Promise(r => setTimeout(r, 200));
+        const cpu2 = fs2.readFileSync('/proc/stat', 'utf8').split('\n')[0].split(' ').slice(1).map(Number);
+        const idle1 = cpu1[3], idle2 = cpu2[3];
+        const total1 = cpu1.reduce((a,b)=>a+b,0), total2 = cpu2.reduce((a,b)=>a+b,0);
+        stats.cpuPercent = Math.round((1 - (idle2-idle1)/(total2-total1)) * 100);
+
+        // RAM from /proc/meminfo
+        const mem = fs2.readFileSync('/proc/meminfo', 'utf8');
+        const memTotal = parseInt(mem.match(/MemTotal:\s+(\d+)/)[1]);
+        const memAvail = parseInt(mem.match(/MemAvailable:\s+(\d+)/)[1]);
+        stats.ramTotal = Math.round(memTotal / 1024);
+        stats.ramUsed = Math.round((memTotal - memAvail) / 1024);
+        stats.ramPercent = Math.round((memTotal - memAvail) / memTotal * 100);
+
+        // Disk usage from /proc/mounts + statfs via df
+        try {
+          const { execSync } = require('child_process');
+          const df = execSync('df -h / /mnt 2>/dev/null || df -h /', { encoding: 'utf8' });
+          const lines = df.trim().split('\n').slice(1);
+          stats.disks = lines.map(line => {
+            const parts = line.trim().split(/\s+/);
+            return { fs: parts[0], size: parts[1], used: parts[2], avail: parts[3], percent: parts[4], mount: parts[5] };
+          }).filter(d => d.mount);
+        } catch(e) { stats.disks = []; }
+
+        // Load average
+        const load = fs2.readFileSync('/proc/loadavg', 'utf8').split(' ');
+        stats.load1 = parseFloat(load[0]);
+        stats.load5 = parseFloat(load[1]);
+        stats.load15 = parseFloat(load[2]);
+
+        // Uptime
+        const uptime = parseFloat(fs2.readFileSync('/proc/uptime', 'utf8').split(' ')[0]);
+        stats.uptimeSeconds = Math.floor(uptime);
+
+        // CPU info
+        try {
+          const cpuinfo = fs2.readFileSync('/proc/cpuinfo', 'utf8');
+          const modelMatch = cpuinfo.match(/model name\s*:\s*(.+)/);
+          const coreMatches = cpuinfo.match(/processor\s*:/g);
+          stats.cpuModel = modelMatch ? modelMatch[1].trim() : 'Unknown';
+          stats.cpuCores = coreMatches ? coreMatches.length : 1;
+        } catch(e) {}
+
+        // Network stats
+        try {
+          const net = fs2.readFileSync('/proc/net/dev', 'utf8');
+          const lines2 = net.trim().split('\n').slice(2);
+          stats.network = lines2.map(line => {
+            const parts = line.trim().split(/\s+/);
+            return { iface: parts[0].replace(':',''), rxBytes: parseInt(parts[1]), txBytes: parseInt(parts[9]) };
+          }).filter(n => n.iface !== 'lo');
+        } catch(e) { stats.network = []; }
+
+      } catch(e) { stats.error = e.message; }
+
+      // Also get Jellyfin system info
+      try {
+        const info = await jellyfinGet('/System/Info');
+        stats.jellyfin = {
+          serverName: info.ServerName,
+          version: info.Version,
+          os: info.OperatingSystem,
+          arch: info.SystemArchitecture,
+          localAddress: info.LocalAddress,
+          wanAddress: info.WanAddress,
+          hasUpdate: info.HasUpdateAvailable,
+        };
+      } catch(e) {}
+
+      return JSON.stringify(stats);
+    },
+
+    // ── METADATA EDIT ──
+    '/api/library/get-item': async () => {
+      const itemId = parsed.query.id;
+      if (!itemId) return JSON.stringify({ error: 'No item ID' });
+      const item = await jellyfinGet(`/Items/${itemId}?fields=Overview,Taglines,Genres,OfficialRating,ProductionYear,People,Studios,Tags`);
+      return JSON.stringify(item);
+    },
+    '/api/library/update-item': async () => {
+      // POST equivalent - we need to handle POST body
+      // Since our server only does GET, read body from request
+      return JSON.stringify({ error: 'Use POST /api/library/update-item' });
+    },
+
+    // ── AI AUTOFIX ──
+    '/api/library/ai-fix': async () => {
+      const itemId = parsed.query.id;
+      if (!itemId) return JSON.stringify({ error: 'No item ID' });
+      try {
+        const item = await jellyfinGet(`/Items/${itemId}?fields=Overview,Taglines,Genres,OfficialRating,ProductionYear,People`);
+        const prompt = `You are a movie database assistant. Analyse this movie metadata and suggest improvements.
+
+Movie: ${item.Name} (${item.ProductionYear})
+Current Overview: ${item.Overview || 'MISSING'}
+Current Tagline: ${(item.Taglines||[])[0] || 'MISSING'}
+Genres: ${(item.Genres||[]).join(', ') || 'MISSING'}
+Rating: ${item.OfficialRating || 'MISSING'}
+
+Respond ONLY with a JSON object (no markdown, no explanation):
+{
+  "overview": "improved or fixed overview text (2-3 sentences, engaging, no spoilers)",
+  "tagline": "short memorable tagline if missing or improve existing",
+  "issues": ["list", "of", "issues", "found"],
+  "confidence": 0.0-1.0
+}`;
+
+        const response = await httpGet('https://api.anthropic.com/v1/messages', {});
+        // Can't POST with our httpGet helper - return suggestion data instead
+        // Return what we can analyse without AI call
+        const issues = [];
+        if (!item.Overview || item.Overview.length < 50) issues.push('Missing or very short overview');
+        if (!item.Taglines || !item.Taglines.length) issues.push('No tagline');
+        if (!item.Genres || !item.Genres.length) issues.push('No genres set');
+        if (!item.OfficialRating) issues.push('No age rating');
+        if (!item.ProductionYear) issues.push('No production year');
+
+        return JSON.stringify({
+          itemId, title: item.Name, year: item.ProductionYear,
+          currentOverview: item.Overview,
+          currentTagline: (item.Taglines||[])[0],
+          issues,
+          needsAiFix: issues.length > 0,
+        });
+      } catch(e) { return JSON.stringify({ error: e.message }); }
+    },
+
+    // ── QUALITY THRESHOLDS (stored in memory, configurable) ──
+    '/api/library/set-thresholds': async () => {
+      // These come via query params
+      if (parsed.query.sdThreshold) qualityThresholds.sd = parsed.query.sdThreshold;
+      if (parsed.query.upgradeThreshold) qualityThresholds.upgrade = parsed.query.upgradeThreshold;
+      if (parsed.query.audioThreshold) qualityThresholds.audio = parsed.query.audioThreshold;
+      return JSON.stringify({ success: true, thresholds: qualityThresholds });
+    },
+    '/api/library/get-thresholds': async () => JSON.stringify(qualityThresholds),
+
     '/health': async () => JSON.stringify({ status: 'ok', jellyfin: JELLYFIN_URL, tmdb: !!TMDB_API_KEY }),
     '/api/library/missing-posters': async () => JSON.stringify(await getMissingPosters() || []),
     '/api/library/missing-backdrops': async () => JSON.stringify(await getMissingBackdrops() || []),

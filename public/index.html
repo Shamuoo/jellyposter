@@ -147,6 +147,44 @@
     .tools-loading{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:14px;color:var(--cream);opacity:0.2;padding:20px 0;}
     .tools-subsection{margin-bottom:28px;}
     .tools-subsection-title{font-size:9px;font-weight:700;letter-spacing:0.25em;text-transform:uppercase;color:var(--cream);opacity:0.28;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,0.04);}
+
+    /* ── Metadata editor ── */
+    #meta-editor{position:fixed;inset:0;z-index:55;background:rgba(0,0,0,0.9);display:none;align-items:center;justify-content:center;backdrop-filter:blur(10px);}
+    #meta-editor.open{display:flex;}
+    #meta-editor-card{width:min(700px,94vw);max-height:88vh;background:#111009;border:1px solid rgba(201,168,76,0.15);border-radius:12px;overflow:hidden;display:flex;flex-direction:column;}
+    #meta-editor-head{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid rgba(255,255,255,0.06);flex-shrink:0;}
+    #meta-editor-title{font-family:'Bebas Neue',sans-serif;font-size:12px;letter-spacing:0.4em;color:var(--accent);opacity:0.7;}
+    #meta-editor-close{background:none;border:1px solid rgba(255,255,255,0.1);color:rgba(240,232,213,0.4);border-radius:50%;width:26px;height:26px;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;}
+    #meta-editor-body{padding:22px;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:14px;}
+    .meta-field{display:flex;flex-direction:column;gap:5px;}
+    .meta-field label{font-size:8px;font-weight:700;letter-spacing:0.25em;text-transform:uppercase;color:var(--accent);opacity:0.5;}
+    .meta-field input,.meta-field textarea,.meta-field select{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:5px;color:var(--cream);font-family:'Montserrat',sans-serif;font-size:12px;padding:8px 10px;outline:none;transition:border-color 0.2s;width:100%;}
+    .meta-field input:focus,.meta-field textarea:focus{border-color:rgba(201,168,76,0.3);}
+    .meta-field textarea{resize:vertical;min-height:80px;}
+    #meta-editor-foot{display:flex;gap:8px;padding:14px 22px;border-top:1px solid rgba(255,255,255,0.05);flex-shrink:0;}
+    .meta-save-btn{flex:1;padding:9px;border-radius:5px;border:1px solid rgba(201,168,76,0.3);background:rgba(201,168,76,0.08);color:var(--accent);font-size:9px;letter-spacing:0.2em;text-transform:uppercase;cursor:pointer;transition:all 0.2s;}
+    .meta-save-btn:hover{background:rgba(201,168,76,0.15);}
+    .meta-ai-btn{padding:9px 14px;border-radius:5px;border:1px solid rgba(93,173,226,0.3);background:rgba(93,173,226,0.06);color:#5dade2;font-size:9px;letter-spacing:0.2em;text-transform:uppercase;cursor:pointer;transition:all 0.2s;white-space:nowrap;}
+    .meta-ai-btn:hover{background:rgba(93,173,226,0.12);}
+    .meta-ai-btn.running{animation:qa-pulse 1.5s ease-in-out infinite;}
+    .meta-scrape-btn{padding:9px 14px;border-radius:5px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.03);color:rgba(240,232,213,0.4);font-size:9px;letter-spacing:0.2em;text-transform:uppercase;cursor:pointer;transition:all 0.2s;white-space:nowrap;}
+    .meta-scrape-btn:hover{background:rgba(255,255,255,0.07);}
+    #meta-editor-status{font-size:10px;color:var(--cream);opacity:0.35;font-style:italic;font-family:'Cormorant Garamond',serif;padding:0 22px 10px;min-height:18px;}
+    #meta-ai-suggestions{background:rgba(93,173,226,0.05);border:1px solid rgba(93,173,226,0.15);border-radius:6px;padding:12px;margin-top:4px;display:none;}
+    #meta-ai-suggestions.visible{display:block;}
+    .ai-suggestion-label{font-size:7px;font-weight:700;letter-spacing:0.25em;text-transform:uppercase;color:#5dade2;opacity:0.6;margin-bottom:6px;}
+    .ai-suggestion-text{font-size:12px;color:var(--cream);opacity:0.6;line-height:1.5;margin-bottom:8px;}
+    .ai-apply-btn{font-size:8px;padding:4px 10px;border-radius:3px;border:1px solid rgba(93,173,226,0.3);background:rgba(93,173,226,0.08);color:#5dade2;cursor:pointer;letter-spacing:0.12em;text-transform:uppercase;}
+    .ai-issue{font-size:9px;color:#f39c12;opacity:0.7;margin-top:3px;}
+
+    /* System stats in health */
+    .sys-bar{height:6px;border-radius:3px;background:rgba(255,255,255,0.06);overflow:hidden;margin-top:4px;}
+    .sys-bar-fill{height:100%;border-radius:3px;transition:width 0.5s ease;}
+
+    /* Threshold settings */
+    .threshold-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+    .threshold-label{font-size:10px;color:var(--cream);opacity:0.42;}
+    .threshold-select{width:100px;padding:4px 6px;border-radius:4px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:var(--cream);font-size:10px;outline:none;}
     #health-btn{position:fixed;bottom:22px;left:22px;z-index:60;width:34px;height:34px;border-radius:50%;background:rgba(10,8,4,0.8);border:1px solid rgba(201,168,76,0.18);color:var(--accent);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 0.4s ease;backdrop-filter:blur(10px);}
     #health-btn.visible{opacity:0.45;}
     #health-btn.visible:hover{opacity:1;}
@@ -562,6 +600,7 @@
         <div id="detail-rating-row"><div id="detail-stars"></div><div id="detail-score"></div></div>
         <div id="detail-release"></div>
         <div id="detail-trailer"><canvas id="detail-qr" width="52" height="52"></canvas><div id="detail-trailer-text">Scan to watch trailer</div></div>
+        <button id="detail-edit-btn" style="margin-top:12px;width:100%;padding:8px;border-radius:5px;border:1px solid rgba(201,168,76,0.2);background:rgba(201,168,76,0.06);color:var(--accent);font-size:9px;letter-spacing:0.2em;text-transform:uppercase;cursor:pointer;">✏ Edit Metadata</button>
         <div id="detail-tech" style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.05);display:none;">
           <div class="d-section" style="margin-bottom:8px;cursor:pointer;" id="detail-tech-toggle">Technical ▾</div>
           <div id="detail-tech-body" style="display:none;">
@@ -607,6 +646,45 @@
   </div>
 
   <button id="tools-btn">🔧</button>
+
+  <!-- Metadata Editor -->
+  <div id="meta-editor">
+    <div id="meta-editor-card">
+      <div id="meta-editor-head">
+        <div id="meta-editor-title">Edit Metadata</div>
+        <button id="meta-editor-close">✕</button>
+      </div>
+      <div id="meta-editor-body">
+        <div class="meta-field"><label>Title</label><input id="me-title" type="text" /></div>
+        <div class="meta-field"><label>Year</label><input id="me-year" type="number" /></div>
+        <div class="meta-field"><label>Overview</label><textarea id="me-overview"></textarea></div>
+        <div class="meta-field"><label>Tagline</label><input id="me-tagline" type="text" /></div>
+        <div class="meta-field"><label>Official Rating</label><input id="me-rating" type="text" placeholder="e.g. AU-M, PG-13" /></div>
+        <div class="meta-field"><label>Genres (comma separated)</label><input id="me-genres" type="text" /></div>
+        <div id="meta-ai-suggestions">
+          <div class="ai-suggestion-label">🤖 AI Suggestions</div>
+          <div id="ai-overview-wrap" style="display:none">
+            <div class="ai-suggestion-label" style="color:rgba(240,232,213,0.3)">Overview</div>
+            <div class="ai-suggestion-text" id="ai-overview-text"></div>
+            <button class="ai-apply-btn" id="ai-apply-overview">Apply</button>
+          </div>
+          <div id="ai-tagline-wrap" style="display:none;margin-top:10px;">
+            <div class="ai-suggestion-label" style="color:rgba(240,232,213,0.3)">Tagline</div>
+            <div class="ai-suggestion-text" id="ai-tagline-text"></div>
+            <button class="ai-apply-btn" id="ai-apply-tagline">Apply</button>
+          </div>
+          <div id="ai-issues-wrap" style="margin-top:8px;"></div>
+        </div>
+      </div>
+      <div id="meta-editor-status"></div>
+      <div id="meta-editor-foot">
+        <button class="meta-scrape-btn" id="meta-rescrape">↻ Re-scrape</button>
+        <button class="meta-ai-btn" id="meta-ai-fix">🤖 AI Fix</button>
+        <button class="meta-save-btn" id="meta-save">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Health page -->
   <button id="lib-btn">🔧</button>
   <button id="health-btn">📡</button>
@@ -645,6 +723,7 @@
         <div class="tools-nav-item" data-section="versions">📀 Versions & 3D</div>
         <div class="tools-nav-item" data-section="music">🎵 Music</div>
         <div class="tools-nav-item" data-section="actions">⚡ Quick Actions</div>
+        <div class="tools-nav-item" data-section="settings">⚙ Thresholds</div>
       </div>
       <div id="tools-content">
 
@@ -723,6 +802,28 @@
           <div class="tools-subsection">
             <div class="tools-subsection-title">Albums Missing Artwork <span id="noart-count" class="tools-nav-badge"></span></div>
             <div class="tools-list" id="tools-noart-list"><div class="tools-loading">Run scan to see results</div></div>
+          </div>
+        </div>
+
+        <!-- THRESHOLDS -->
+        <div class="tools-section" id="ts-settings">
+          <div class="tools-section-title">Quality Thresholds</div>
+          <div class="tools-section-sub">Configure what counts as poor quality</div>
+          <div class="report-card" style="max-width:360px;">
+            <div class="report-card-title">Video Quality</div>
+            <div class="threshold-row"><span class="threshold-label">Flag as SD / Bad quality if below:</span>
+              <select class="threshold-select" id="th-sd">
+                <option value="1080p">1080p</option><option value="720p" selected>720p</option><option value="SD">SD only</option>
+              </select></div>
+            <div class="threshold-row"><span class="threshold-label">Flag as upgrade candidate if below:</span>
+              <select class="threshold-select" id="th-upgrade">
+                <option value="4K">4K</option><option value="1080p" selected>1080p</option><option value="720p">720p</option>
+              </select></div>
+            <div class="threshold-row" style="margin-top:14px"><span class="threshold-label">Audio — flag as poor if below:</span>
+              <select class="threshold-select" id="th-audio">
+                <option value="Atmos">Atmos</option><option value="DTS">DTS</option><option value="DD" selected>DD</option><option value="AAC">AAC</option>
+              </select></div>
+            <button class="qa-btn" id="th-save" style="margin-top:14px;">💾 Save & Rescan</button>
           </div>
         </div>
 
@@ -1061,6 +1162,7 @@
     document.getElementById('detail-score').textContent=sc?`${sc.toFixed(1)} / 10`:'';
     document.getElementById('detail-release').textContent=item.releaseDate?`Release: ${new Date(item.releaseDate).toLocaleDateString([],{month:'long',day:'numeric',year:'numeric'})}`:''
     // Tech details
+    const editBtn=document.getElementById('detail-edit-btn');if(editBtn){editBtn.onclick=()=>openMetaEditor(item);}
     const techSection=document.getElementById('detail-tech');
     const techGrid=document.getElementById('detail-tech-grid');
     techGrid.innerHTML='';
@@ -1270,6 +1372,109 @@
     updateProgress(positionTicks,runtimeTicks||item.RunTimeTicks);
   }
 
+
+
+  // ════ METADATA EDITOR ════
+  let currentEditItem = null;
+
+  function openMetaEditor(item) {
+    currentEditItem = item;
+    document.getElementById('me-title').value = item.title || item.Name || '';
+    document.getElementById('me-year').value = item.year || item.ProductionYear || '';
+    document.getElementById('me-overview').value = item.overview || item.Overview || '';
+    document.getElementById('me-tagline').value = item.tagline || (item.Taglines && item.Taglines[0]) || '';
+    document.getElementById('me-rating').value = item.rating || item.OfficialRating || '';
+    document.getElementById('me-genres').value = (item.Genres || (item.genre ? item.genre.split(' / ') : [])).join(', ');
+    document.getElementById('meta-ai-suggestions').classList.remove('visible');
+    document.getElementById('meta-editor-status').textContent = '';
+    document.getElementById('meta-editor').classList.add('open');
+    playSound('open');
+  }
+
+  document.getElementById('meta-editor-close').addEventListener('click', () => {
+    document.getElementById('meta-editor').classList.remove('open');
+  });
+  document.getElementById('meta-editor').addEventListener('click', e => {
+    if (e.target === document.getElementById('meta-editor')) document.getElementById('meta-editor').classList.remove('open');
+  });
+
+  document.getElementById('meta-save').addEventListener('click', async () => {
+    if (!currentEditItem) return;
+    const status = document.getElementById('meta-editor-status');
+    status.textContent = 'Saving...';
+    const updates = {
+      Name: document.getElementById('me-title').value,
+      ProductionYear: parseInt(document.getElementById('me-year').value) || null,
+      Overview: document.getElementById('me-overview').value,
+      Taglines: [document.getElementById('me-tagline').value].filter(Boolean),
+      OfficialRating: document.getElementById('me-rating').value,
+      Genres: document.getElementById('me-genres').value.split(',').map(g => g.trim()).filter(Boolean),
+    };
+    try {
+      const r = await fetch('/api/library/update-item', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ itemId: currentEditItem.id || currentEditItem.Id, updates }),
+      });
+      const d = await r.json();
+      if (d.success) { status.textContent = '✓ Saved successfully'; playSound('toast'); }
+      else status.textContent = '✗ Save failed: ' + (d.error || 'Unknown error');
+    } catch(e) { status.textContent = '✗ Error: ' + e.message; }
+  });
+
+  document.getElementById('meta-rescrape').addEventListener('click', async () => {
+    if (!currentEditItem) return;
+    const status = document.getElementById('meta-editor-status');
+    status.textContent = 'Re-scraping metadata...';
+    try {
+      await fetch(`/api/library/refresh-metadata?id=${currentEditItem.id || currentEditItem.Id}`);
+      status.textContent = '✓ Re-scrape triggered — reload in a moment';
+    } catch(e) { status.textContent = '✗ Error: ' + e.message; }
+  });
+
+  document.getElementById('meta-ai-fix').addEventListener('click', async () => {
+    if (!currentEditItem) return;
+    const btn = document.getElementById('meta-ai-fix');
+    const status = document.getElementById('meta-editor-status');
+    btn.classList.add('running'); btn.textContent = '⏳ Thinking...';
+    status.textContent = 'Asking AI for suggestions...';
+    try {
+      const r = await fetch('/api/library/ai-autofix', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ itemId: currentEditItem.id || currentEditItem.Id }),
+      });
+      const d = await r.json();
+      if (!d.success) { status.textContent = '✗ AI error: ' + (d.error || 'Unknown'); btn.classList.remove('running'); btn.textContent = '🤖 AI Fix'; return; }
+      const s = d.suggestion;
+      const wrap = document.getElementById('meta-ai-suggestions');
+      wrap.classList.add('visible');
+      if (s.overview) {
+        document.getElementById('ai-overview-wrap').style.display = '';
+        document.getElementById('ai-overview-text').textContent = s.overview;
+        document.getElementById('ai-apply-overview').onclick = () => { document.getElementById('me-overview').value = s.overview; status.textContent = 'AI overview applied — save to keep it'; };
+      }
+      if (s.tagline) {
+        document.getElementById('ai-tagline-wrap').style.display = '';
+        document.getElementById('ai-tagline-text').textContent = s.tagline;
+        document.getElementById('ai-apply-tagline').onclick = () => { document.getElementById('me-tagline').value = s.tagline; status.textContent = 'AI tagline applied — save to keep it'; };
+      }
+      const issueWrap = document.getElementById('ai-issues-wrap');
+      issueWrap.innerHTML = (s.issues||[]).map(i => `<div class="ai-issue">⚠ ${i}</div>`).join('');
+      status.textContent = `AI found ${(s.issues||[]).length} issues (confidence: ${Math.round((s.confidence||0)*100)}%)`;
+    } catch(e) { status.textContent = '✗ Error: ' + e.message; }
+    btn.classList.remove('running'); btn.textContent = '🤖 AI Fix';
+  });
+
+  // Threshold settings
+  document.getElementById('th-save') && document.getElementById('th-save').addEventListener('click', async () => {
+    const sd = document.getElementById('th-sd').value;
+    const upgrade = document.getElementById('th-upgrade').value;
+    const audio = document.getElementById('th-audio').value;
+    await fetch(`/api/library/set-thresholds?sdThreshold=${sd}&upgradeThreshold=${upgrade}&audioThreshold=${audio}`);
+    toolsLog(`Thresholds updated — SD: ${sd}, Upgrade: ${upgrade}, Audio: ${audio}`);
+    await runQualityScan();
+  });
 
   // ════ BROWSE ALL MOVIES ════
   const browseOverlay = document.getElementById('browse-overlay');
@@ -1499,6 +1704,57 @@
   document.getElementById('health-back').addEventListener('click', () => { healthOverlay.classList.remove('open'); playSound('click'); });
   document.getElementById('health-refresh').addEventListener('click', () => { loadHealth(); playSound('click'); });
 
+  async function loadSystemStats() {
+    try {
+      const r = await fetch('/api/system-stats'); const d = await r.json();
+      const cpuCol = d.cpuPercent > 80 ? '#e74c3c' : d.cpuPercent > 50 ? '#f39c12' : '#2ecc71';
+      const ramCol = d.ramPercent > 85 ? '#e74c3c' : d.ramPercent > 60 ? '#f39c12' : '#2ecc71';
+      const formatUptime = s => { const d2=Math.floor(s/86400),h=Math.floor((s%86400)/3600),m=Math.floor((s%3600)/60); return [d2&&`${d2}d`,h&&`${h}h`,`${m}m`].filter(Boolean).join(' '); };
+      const formatBytes = b => b > 1073741824 ? (b/1073741824).toFixed(1)+'GB' : (b/1048576).toFixed(0)+'MB';
+      let html = `<div class="h-card">
+        <div class="h-card-title">CPU</div>
+        ${d.cpuModel ? `<div style="font-size:9px;color:rgba(240,232,213,0.25);margin-bottom:8px;">${d.cpuModel} (${d.cpuCores} cores)</div>` : ''}
+        <div class="h-stat"><span class="h-stat-label">Usage</span><span class="h-stat-value" style="color:${cpuCol}">${d.cpuPercent}%</span></div>
+        <div class="sys-bar"><div class="sys-bar-fill" style="width:${d.cpuPercent}%;background:${cpuCol};"></div></div>
+        <div class="h-stat" style="margin-top:8px"><span class="h-stat-label">Load 1m</span><span class="h-stat-value">${d.load1}</span></div>
+        <div class="h-stat"><span class="h-stat-label">Load 5m</span><span class="h-stat-value">${d.load5}</span></div>
+        <div class="h-stat"><span class="h-stat-label">Uptime</span><span class="h-stat-value">${formatUptime(d.uptimeSeconds)}</span></div>
+      </div>
+      <div class="h-card">
+        <div class="h-card-title">Memory</div>
+        <div class="h-stat"><span class="h-stat-label">Used</span><span class="h-stat-value" style="color:${ramCol}">${d.ramUsed} MB</span></div>
+        <div class="h-stat"><span class="h-stat-label">Total</span><span class="h-stat-value">${d.ramTotal} MB</span></div>
+        <div class="sys-bar"><div class="sys-bar-fill" style="width:${d.ramPercent}%;background:${ramCol};"></div></div>
+        <div class="h-stat" style="margin-top:8px"><span class="h-stat-label">Free</span><span class="h-stat-value">${d.ramTotal - d.ramUsed} MB</span></div>
+      </div>`;
+      if (d.disks && d.disks.length) {
+        html += `<div class="h-card"><div class="h-card-title">Storage</div>`;
+        d.disks.forEach(disk => {
+          const pct = parseInt(disk.percent);
+          const col = pct > 90 ? '#e74c3c' : pct > 75 ? '#f39c12' : '#2ecc71';
+          html += `<div style="margin-bottom:10px;"><div style="font-size:8px;color:rgba(240,232,213,0.3);margin-bottom:4px;">${disk.mount} (${disk.fs})</div>
+            <div class="h-stat"><span class="h-stat-label">Used / Total</span><span class="h-stat-value" style="color:${col}">${disk.used} / ${disk.size}</span></div>
+            <div class="sys-bar"><div class="sys-bar-fill" style="width:${pct}%;background:${col};"></div></div></div>`;
+        });
+        html += `</div>`;
+      }
+      if (d.network && d.network.length) {
+        html += `<div class="h-card"><div class="h-card-title">Network</div>`;
+        d.network.forEach(n => { html += `<div class="h-stat"><span class="h-stat-label">${n.iface} ↓</span><span class="h-stat-value">${formatBytes(n.rxBytes)}</span></div><div class="h-stat"><span class="h-stat-label">${n.iface} ↑</span><span class="h-stat-value">${formatBytes(n.txBytes)}</span></div>`; });
+        html += `</div>`;
+      }
+      // Insert system stats at start of health body
+      const healthBody = document.getElementById('health-body');
+      if (healthBody) {
+        const sysDiv = document.createElement('div');
+        sysDiv.id = 'sys-stats-cards';
+        sysDiv.style.cssText = 'display:contents';
+        sysDiv.innerHTML = html;
+        healthBody.insertBefore(sysDiv, healthBody.firstChild);
+      }
+    } catch(e) { console.warn('System stats error:', e); }
+  }
+
   async function loadHealth() {
     const body = document.getElementById('health-body');
     body.innerHTML = '<div style="color:rgba(240,232,213,0.2);font-size:12px;padding:20px;font-style:italic;font-family:Cormorant Garamond,serif;">Loading...</div>';
@@ -1576,6 +1832,7 @@
         el.innerHTML = `<div><div class="h-activity-name" style="color:${sev}">${a.name||''}</div>${a.overview?`<div style="font-size:9px;color:rgba(240,232,213,0.2);margin-top:2px;">${a.overview}</div>`:''}</div><span class="h-activity-date">${a.date?new Date(a.date).toLocaleString():''}</span>`;
         actList.appendChild(el);
       });
+    await loadSystemStats();
     } catch(e) { body.innerHTML = `<div style="color:#e74c3c;padding:20px;font-size:12px;">${e.message}</div>`; }
   }
 
@@ -1693,6 +1950,9 @@
     if (el) { el.textContent = count; el.style.background = (warnAt && count >= warnAt) ? 'rgba(231,76,60,0.2)' : 'rgba(201,168,76,0.12)'; el.style.color = (warnAt && count >= warnAt) ? '#e74c3c' : 'var(--accent)'; }
   }
 
+  function openMetaEditorFromTools(item) {
+    openMetaEditor({ id: item.id, title: item.title, year: item.year, overview: item.overview, tagline: item.tagline, rating: item.rating, Genres: item.genre ? item.genre.split(' / ') : [] });
+  }
   function mkToolsItem(item, badge, badgeClass, actions) {
     const el = document.createElement('div'); el.className = 'tools-item';
     const img = document.createElement('img'); img.className = 'tools-item-poster';
